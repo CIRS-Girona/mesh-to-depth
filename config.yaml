@@ -1,0 +1,16 @@
+# --- Input Files ---
+mesh_path: path/to/your/mesh.obj         # Accepts .obj, .ply, .stl
+cameras_path: path/to/your/cameras_file  # Camera info file path
+camera_format: agisoft                   # Format (only 'agisoft' supported currently)
+
+# --- Output ---
+output_folder: output/                   # Where depth maps/renders will be saved
+save_scene: false                        # Set to true to save RGB renders (slower, memory intensive)
+
+perspective_correction:
+  enabled: true                            # Enable/disable perspective correction
+  reference_image: path/to/reference.jpg   # Reference image for alignment
+                                           # (Filename must match a camera label in cameras_path)
+  minimum_match_count: 10                  # Min ORB matches needed for homography
+  match_count: 20                          # Max ORB matches to use for homography
+  ransac_threshold: 5.0                    # RANSAC threshold for homography outliers
