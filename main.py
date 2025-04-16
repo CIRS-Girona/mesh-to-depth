@@ -1,20 +1,23 @@
 import numpy as np
 import trimesh, yaml, io, os, gc, cv2
 from PIL import Image
+from skimage.transform import warp, AffineTransform
 
 from src.cameras import Agisoft
 from src.utils import compute_homography
 
 
-def setup_camera_scene(mesh, cameras_info, cam_T):
+def setup_camera_scene(mesh, cameras_info, cam_T, padding=0):
+    # Construct camera with parameters specified
+    py = padding * cameras_info.height / cameras_info.width
     camera = trimesh.scene.Camera(
         resolution=(
-            cameras_info.height,
-            cameras_info.width
+            cameras_info.height + py,
+            cameras_info.width + padding
         ),
         focal=(
             cameras_info.fx,
-            cameras_info.fy
+            cameras_info.fy,
         )
     )
 
@@ -34,6 +37,13 @@ def capture_scene(camera, scene):
     return cv2.rotate(img_mesh, cv2.ROTATE_90_CLOCKWISE)
 
 
+def adjust_warping(image, width, height):
+    d_h, d_w = height // 2, width // 2
+    c_h, c_w = image.shape[0] // 2, image.shape[1] // 2
+
+    return image[c_h - d_h: c_h + d_h, c_w - d_w: c_w + d_w]
+
+
 if __name__ == "__main__":
     with open('config.yaml', 'r') as file:
         config = yaml.safe_load(file)
@@ -51,6 +61,8 @@ if __name__ == "__main__":
     mesh = trimesh.load_mesh(config['mesh_path'])
     ray_caster = trimesh.ray.ray_pyembree.RayMeshIntersector(mesh)
 
+    pixel_padding = config['perspective_correction']['padding'] if config['perspective_correction']['enabled'] else 0
+
     H = None  # Initialize the homography matrix
     if config['perspective_correction']['enabled']:
         reference_label = config['perspective_correction']['reference_image']
@@ -59,7 +71,12 @@ if __name__ == "__main__":
         reference_index = cameras_info.labels.index(reference_label)
         reference_T = cameras_info.Ts[reference_index]
 
-        camera, scene = setup_camera_scene(mesh, cameras_info, reference_T)
+        camera, scene = setup_camera_scene(
+            mesh,
+            cameras_info,
+            reference_T,
+            padding=pixel_padding
+        )
 
         img_mesh = capture_scene(camera, scene)
         img_orig = cv2.imread(config['perspective_correction']['reference_image'])
@@ -67,19 +84,29 @@ if __name__ == "__main__":
         del scene, camera
         gc.collect()
 
-        H = compute_homography(
+        H, matched_img = compute_homography(
             img_mesh,
             img_orig,
-            config['perspective_correction']['minimum_match_count'],
-            config['perspective_correction']['match_count'],
-            config['perspective_correction']['ransac_threshold'],
+            transform=config['perspective_correction']['transform'],
+            min_match_count=config['perspective_correction']['minimum_match_count'],
+            distance_ratio=config['perspective_correction']['distance_ratio'],
+            ransac_threshold=config['perspective_correction']['ransac_threshold'],
+            max_iterations=config['perspective_correction']['max_iterations'],
         )
+
+        img_file = os.path.join(config['output_folder'], "matches.png")
+        cv2.imwrite(img_file, matched_img)
 
     print("Loaded mesh. Will begin raytracing.")
 
     for i, (label, T) in enumerate(zip(cameras_info.labels, cameras_info.Ts)):
         # Create scene with proper camera transform
-        camera, scene = setup_camera_scene(mesh, cameras_info, T)
+        camera, scene = setup_camera_scene(
+            mesh,
+            cameras_info,
+            T,
+            padding=pixel_padding
+        )
 
         # Generate rays and calculate intersections
         ray_origins, ray_vectors, ray_pixels = scene.camera_rays()
@@ -102,6 +129,7 @@ if __name__ == "__main__":
         depth = np.astype(1000 * np.abs(depth), np.uint16)  # Convert to millimeters
         if config['perspective_correction']['enabled'] and H is not None:  # Correct perspective if enabled and possible
             depth = cv2.warpPerspective(depth, H, camera.resolution[::-1])
+            # depth = adjust_warping(depth, cameras_info.width, cameras_info.height)
 
         img_file = os.path.join(config['output_folder'], f"{label}.png")
         cv2.imwrite(img_file, depth, (cv2.IMWRITE_PNG_COMPRESSION, 9))

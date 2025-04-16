@@ -55,6 +55,9 @@ class Agisoft(CameraInfo):
         self.fx = float(calibration.find('f').text)
         self.fy = self.fx
 
+        self.fovx = 2 * np.arctan(self.width / (2 * self.fx))
+        self.fovy = 2 * np.arctan(self.height / (2 * self.fy))
+
         self.cx = float(calibration.find('cx').text)
         self.cy = float(calibration.find('cy').text)
 

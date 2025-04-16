@@ -3,6 +3,7 @@ class CameraInfo:
         # Intrinsic Parameters
         self.fx, self.fy = None, None
         self.cx, self.cy = None, None
+        self.fovx, self.fovy = None, None      # Should be stored in radians
         self.width, self.height = None, None
 
         # Distortion Parameters
