@@ -1,7 +1,6 @@
 import numpy as np
 import trimesh, yaml, io, os, gc, cv2
 from PIL import Image
-from skimage.transform import warp, AffineTransform
 
 from src.cameras import Agisoft
 from src.utils import compute_homography
@@ -9,10 +8,9 @@ from src.utils import compute_homography
 
 def setup_camera_scene(mesh, cameras_info, cam_T, padding=0):
     # Construct camera with parameters specified
-    py = padding * cameras_info.height / cameras_info.width
     camera = trimesh.scene.Camera(
         resolution=(
-            cameras_info.height + py,
+            cameras_info.height + padding,
             cameras_info.width + padding
         ),
         focal=(
@@ -37,11 +35,22 @@ def capture_scene(camera, scene):
     return cv2.rotate(img_mesh, cv2.ROTATE_90_CLOCKWISE)
 
 
-def adjust_warping(image, width, height):
-    d_h, d_w = height // 2, width // 2
-    c_h, c_w = image.shape[0] // 2, image.shape[1] // 2
+def adjust_warping(image, H, H_inv, width, height):
+    # Get the position of the top-left pixel in the padded image
+    top_left = H_inv @ np.array((0, 0, 1), dtype=np.float32)
+    top_left /= top_left[2]
 
-    return image[c_h - d_h: c_h + d_h, c_w - d_w: c_w + d_w]
+    # Get the position of the top-left pixel in the warped image
+    top_left_warped = H @ top_left
+    top_left_warped /= top_left_warped[2]
+
+    # Crop image to desired resolution
+    start_y = int(round(top_left_warped[1]))
+    start_x = int(round(top_left_warped[0]))
+    end_y = start_y + height
+    end_x = start_x + width
+
+    return image[start_y:end_y, start_x: end_x]
 
 
 if __name__ == "__main__":
@@ -84,7 +93,7 @@ if __name__ == "__main__":
         del scene, camera
         gc.collect()
 
-        H, matched_img = compute_homography(
+        H, H_inv, matched_img = compute_homography(
             img_mesh,
             img_orig,
             transform=config['perspective_correction']['transform'],
@@ -129,7 +138,7 @@ if __name__ == "__main__":
         depth = np.astype(1000 * np.abs(depth), np.uint16)  # Convert to millimeters
         if config['perspective_correction']['enabled'] and H is not None:  # Correct perspective if enabled and possible
             depth = cv2.warpPerspective(depth, H, camera.resolution[::-1])
-            # depth = adjust_warping(depth, cameras_info.width, cameras_info.height)
+            depth = adjust_warping(depth, H, H_inv, cameras_info.width, cameras_info.height)
 
         img_file = os.path.join(config['output_folder'], f"{label}.png")
         cv2.imwrite(img_file, depth, (cv2.IMWRITE_PNG_COMPRESSION, 9))
@@ -139,6 +148,7 @@ if __name__ == "__main__":
             img_mesh = capture_scene(camera, scene)
             if config['perspective_correction']['enabled'] and H is not None:
                 img_mesh = cv2.warpPerspective(img_mesh, H, camera.resolution[::-1])
+                img_mesh = adjust_warping(img_mesh, H, H_inv, cameras_info.width, cameras_info.height)
 
             img_file = os.path.join(config['output_folder'], f"{label}_scene.png")
             cv2.imwrite(img_file, img_mesh)

@@ -16,5 +16,5 @@ perspective_correction:
   distance_ratio: 0.75                     # Ratio used for Lowe's ratio test when matching points.
   ransac_threshold: 5.0                    # RANSAC threshold for homography outliers
   max_iterations: 10000                    # Maximum number of iterations for RANSAC
-  padding: 0                            # The amount of padding (in pixels) around the borders.
+  padding: 1000                            # The amount of padding (in pixels) around the borders.
                                            # Will be cropped to adjust for warping by homography

@@ -59,6 +59,6 @@ def compute_homography(img1, img2, transform='affine', min_match_count=10, dista
         matchColor=(0, 0, 255)
     )
 
-    return model.params, matched_img
+    return model.params, model.inverse.params, matched_img
 
 
