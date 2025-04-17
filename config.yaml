@@ -1,18 +1,18 @@
 # --- Input Files ---
-mesh_path: temp/plot1_18_240424_t2_low_poly.obj         # Accepts .obj, .ply, .stl
-cameras_path: temp/plot1_18_240424_t2.cams.xml  # Camera info file path
-camera_format: agisoft                   # Format (only 'agisoft' supported currently)
+mesh_path: path/to/mesh_file               # Accepts .obj, .ply, .stl
+cameras_path: path/to/camera_file          # Camera info file path
+camera_format: agisoft                     # Format (only 'agisoft' supported currently)
 
 # --- Output ---
-output_folder: output/                   # Where depth maps/renders will be saved
-save_scene: true                        # Set to true to save RGB renders (slower, memory intensive)
+output_folder: output/                     # Where depth maps/renders will be saved
+save_scene: false                          # Set to true to save RGB renders (slower, memory intensive)
 
 perspective_correction:
   enabled: true                            # Enable/disable perspective correction
-  reference_image: temp/images/IMG_8551.jpg   # Reference image for alignment
+  reference_image: path/to/reference.png   # Reference image for alignment
                                            # (Filename must match a camera label in cameras_path)
   transform: affine                        # The transform type ('affine' or 'projective')
-  minimum_match_count: 4                   # Min ORB matches needed for homography
+  minimum_match_count: 4                   # Minimum matches needed for homography
   distance_ratio: 0.75                     # Ratio used for Lowe's ratio test when matching points.
   ransac_threshold: 5.0                    # RANSAC threshold for homography outliers
   max_iterations: 10000                    # Maximum number of iterations for RANSAC
