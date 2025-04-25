@@ -10,8 +10,6 @@ class CameraInfo:
         self.p1, self.p2 = None, None
         self.k1, self.k2, self.k3 = None, None, None
 
-        self.mapx, self.mapy = None, None  # Pixel mapping from undistorted to distorted
-
         # World to camera transformation matrices and camera labels
         self.Ts = []
         self.labels = []

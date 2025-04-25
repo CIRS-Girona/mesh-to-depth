@@ -67,27 +67,3 @@ class Agisoft(CameraInfo):
         self.k1 = float(calibration.find('k1').text)
         self.k2 = float(calibration.find('k2').text)
         self.k3 = float(calibration.find('k3').text)
-
-        # Generate grid of (u, v) coordinates for the distorted image
-        u, v = np.meshgrid(np.arange(self.width), np.arange(self.height))
-        u = u.astype(np.float32)
-        v = v.astype(np.float32)
-
-        # Convert to normalized coordinates
-        x = (u - self.cx) / self.fx
-        y = (v - self.cy) / self.fy
-
-        # Apply distortion
-        r2 = x**2 + y**2
-        r4 = r2**2
-        r6 = r4 * r2
-        x_dist = x * (1 + self.k1*r2 + self.k2*r4 + self.k3*r6) + 2*self.p1*x*y + self.p2*(r2 + 2*x**2)
-        y_dist = y * (1 + self.k1*r2 + self.k2*r4 + self.k3*r6) + self.p1*(r2 + 2*y**2) + 2*self.p2*x*y
-
-        # Convert back to pixel coordinates
-        u_undist = x_dist * self.fx + self.cx
-        v_undist = y_dist * self.fy + self.cy
-
-        # Create the maps for remap distortion
-        self.mapx = u_undist.astype(np.float32)
-        self.mapy = v_undist.astype(np.float32)
