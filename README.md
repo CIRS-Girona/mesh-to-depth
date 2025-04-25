@@ -7,7 +7,8 @@ MeshToDepth is a Python tool designed to generate depth maps from a 3D mesh (`.o
 * **Depth Map Generation:** Creates 16-bit depth maps (in millimeters) from specified camera viewpoints by ray tracing against a 3D mesh. A value of zero is used to indicate an invalid value in the depth map.
 * **Multiple Camera Formats:** Currently supports camera calibration and pose files from Agisoft Metashape (`.xml`). Support to Meshroom (`.sfm`) and Alembic (`.abc`) file formats will be added in the future.
 * **Flexible Mesh Input:** Accepts common mesh formats (`.obj`, `.ply`, `.stl`) via the `trimesh` library.
-* **Perspective Correction:** Optionally aligns the output depth maps and rendered views to match the perspective of a real-world reference photograph using feature matching (ORB) and image homography.
+* **Camera Distortion  Model Support:** Supports distorting the depth maps and scene images generated using the distortion parameters of the given camera.
+* **Perspective Correction:** Optionally aligns the output depth maps and rendered views to match the perspective of a real-world reference photograph using feature matching (SIFT) and image homography.
 * **Optional Scene Rendering:** Can save rendered RGB images of the mesh from each camera view for visualization or debugging.
 
 **Note**: It is important to note that the quality of the scene captured and depth maps generated depends on the mesh quality used. If scene

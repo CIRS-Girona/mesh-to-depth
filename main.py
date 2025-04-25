@@ -3,7 +3,7 @@ import trimesh, yaml, io, os, gc, cv2
 from PIL import Image
 
 from src.cameras import Agisoft
-from src.utils import compute_homography
+from src.utils import compute_distortion_maps, compute_homography
 
 
 def setup_camera_scene(mesh, cameras_info, cam_T, padding=0):
@@ -72,6 +72,12 @@ if __name__ == "__main__":
 
     pixel_padding = config['perspective_correction']['padding'] if config['perspective_correction']['enabled'] else 0
 
+    map_x, map_y = compute_distortion_maps(
+        height=cameras_info.height + pixel_padding,
+        width=cameras_info.width + pixel_padding,
+        cameras_info=cameras_info
+    )
+
     H = None  # Initialize the homography matrix
     if config['perspective_correction']['enabled']:
         reference_label = config['perspective_correction']['reference_image']
@@ -88,6 +94,8 @@ if __name__ == "__main__":
         )
 
         img_mesh = capture_scene(camera, scene)
+        img_mesh = cv2.remap(img_mesh, map_x, map_y, interpolation=cv2.INTER_LINEAR)
+
         img_orig = cv2.imread(config['perspective_correction']['reference_image'])
 
         del scene, camera
@@ -120,7 +128,7 @@ if __name__ == "__main__":
         # Generate rays and calculate intersections
         ray_origins, ray_vectors, ray_pixels = scene.camera_rays()
         valid_rays = ray_caster.intersects_any(ray_origins, ray_vectors)
-        
+
         # Find intersections for valid rays
         hits = ray_caster.intersects_location(
             ray_origins[valid_rays],
@@ -136,6 +144,7 @@ if __name__ == "__main__":
             depth[depth_coords[:, 0], depth_coords[:, 1]] = positions[:, 2]
 
         depth = np.astype(1000 * np.abs(depth), np.uint16)  # Convert to millimeters
+        depth = cv2.remap(depth, map_x, map_y, interpolation=cv2.INTER_LINEAR)
         if config['perspective_correction']['enabled'] and H is not None:  # Correct perspective if enabled and possible
             depth = cv2.warpPerspective(depth, H, camera.resolution[::-1])
             depth = adjust_warping(depth, H, H_inv, cameras_info.width, cameras_info.height)
@@ -146,6 +155,7 @@ if __name__ == "__main__":
         # Save scene image
         if config['save_scene']:
             img_mesh = capture_scene(camera, scene)
+            img_mesh = cv2.remap(img_mesh, map_x, map_y, interpolation=cv2.INTER_LINEAR)
             if config['perspective_correction']['enabled'] and H is not None:
                 img_mesh = cv2.warpPerspective(img_mesh, H, camera.resolution[::-1])
                 img_mesh = adjust_warping(img_mesh, H, H_inv, cameras_info.width, cameras_info.height)

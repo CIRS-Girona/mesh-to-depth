@@ -4,6 +4,44 @@ from skimage.measure import ransac
 from skimage.transform import ProjectiveTransform, AffineTransform
 
 
+def compute_distortion_maps(height, width, cameras_info, max_iter=1000, tol=1e-3):
+    """
+    Compute mapping from distorted pixels to undistorted coordinates.
+    :return: map_x, map_y for cv2.remap()
+    """
+    cx = cameras_info.cx + (width - cameras_info.width) // 2
+    cy = cameras_info.cy + (height - cameras_info.height) // 2
+
+    u_d, v_d = np.meshgrid(np.arange(width), np.arange(height))
+    
+    # Normalize coordinates (distorted)
+    x_prime = (u_d - cx) / cameras_info.fx
+    y_prime = (v_d - cy) / cameras_info.fy
+
+    # Iteratively solve for undistorted (x, y)
+    x, y = x_prime.copy(), y_prime.copy()
+    for _ in range(max_iter):
+        r2 = x**2 + y**2
+        radial = 1 + cameras_info.k1*r2 + cameras_info.k2*r2**2 + cameras_info.k3*r2**3
+
+        xd = x * radial + 2*cameras_info.p1*x*y + cameras_info.p2*(r2 + 2*x**2)
+        yd = y * radial + cameras_info.p1*(r2 + 2*y**2) + 2*cameras_info.p2*x*y
+
+        x_new = x - (xd - x_prime)
+        y_new = y - (yd - y_prime)
+
+        if np.linalg.norm((x - x_new, y - y_new)) <= tol:
+            break
+
+        x, y = x_new, y_new
+
+    # Convert back to pixel coordinates
+    map_x = (x * cameras_info.fx + cx).astype(np.float32)
+    map_y = (y * cameras_info.fy + cy).astype(np.float32)
+
+    return map_x, map_y
+
+
 def compute_homography(img1, img2, transform='affine', min_match_count=10, distance_ratio=0.75, ransac_threshold=3.0, max_iterations=10000):
     img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
     img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
