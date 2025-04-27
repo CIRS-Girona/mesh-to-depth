@@ -58,8 +58,8 @@ class Agisoft(CameraInfo):
         self.fovx = 2 * np.arctan(self.width / (2 * self.fx))
         self.fovy = 2 * np.arctan(self.height / (2 * self.fy))
 
-        self.cx = float(calibration.find('cx').text)
-        self.cy = float(calibration.find('cy').text)
+        self.cx = self.width / 2.0 + float(calibration.find('cx').text)
+        self.cy = self.height / 2.0 + float(calibration.find('cy').text)
 
         self.p1 = float(calibration.find('p1').text)
         self.p2 = float(calibration.find('p2').text)

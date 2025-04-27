@@ -8,11 +8,13 @@ def compute_distortion_maps(height, width, cameras_info, max_iter=1000, tol=1e-3
     """
     Compute mapping from distorted pixels to undistorted coordinates.
     :return: map_x, map_y for cv2.remap()
+
+    Source: https://docs.opencv.org/4.x/dc/dbb/tutorial_py_calibration.html
     """
     cx = cameras_info.cx + (width - cameras_info.width) // 2
     cy = cameras_info.cy + (height - cameras_info.height) // 2
 
-    u_d, v_d = np.meshgrid(np.arange(width), np.arange(height))
+    u_d, v_d = np.meshgrid(np.arange(width, dtype=np.float32), np.arange(height, dtype=np.float32))
     
     # Normalize coordinates (distorted)
     x_prime = (u_d - cx) / cameras_info.fx
@@ -98,5 +100,3 @@ def compute_homography(img1, img2, transform='affine', min_match_count=10, dista
     )
 
     return model.params, model.inverse.params, matched_img
-
-

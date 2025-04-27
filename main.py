@@ -30,7 +30,7 @@ def setup_camera_scene(mesh, cameras_info, cam_T, padding=0):
 
 
 def capture_scene(camera, scene):
-    img_mesh = scene.save_image(resolution=camera.resolution, visible=False)
+    img_mesh = scene.save_image(resolution=camera.resolution, visible=True)
     img_mesh = np.array(Image.open(io.BytesIO(img_mesh)))
     return cv2.rotate(img_mesh, cv2.ROTATE_90_CLOCKWISE)
 
@@ -67,9 +67,6 @@ if __name__ == "__main__":
     else:
         raise ValueError(f"Unknown camera format {config['camera_format']}.")
 
-    mesh = trimesh.load_mesh(config['mesh_path'])
-    ray_caster = trimesh.ray.ray_pyembree.RayMeshIntersector(mesh)
-
     pixel_padding = config['perspective_correction']['padding'] if config['perspective_correction']['enabled'] else 0
 
     map_x, map_y = compute_distortion_maps(
@@ -77,6 +74,9 @@ if __name__ == "__main__":
         width=cameras_info.width + pixel_padding,
         cameras_info=cameras_info
     )
+
+    mesh = trimesh.load_mesh(config['mesh_path'])
+    ray_caster = trimesh.ray.ray_pyembree.RayMeshIntersector(mesh)
 
     H = None  # Initialize the homography matrix
     if config['perspective_correction']['enabled']:
