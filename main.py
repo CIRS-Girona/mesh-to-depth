@@ -69,11 +69,12 @@ if __name__ == "__main__":
 
     pixel_padding = config['perspective_correction']['padding'] if config['perspective_correction']['enabled'] else 0
 
-    map_x, map_y = compute_distortion_maps(
-        height=cameras_info.height + pixel_padding,
-        width=cameras_info.width + pixel_padding,
-        cameras_info=cameras_info
-    )
+    if config['apply_distortion']:
+        map_x, map_y = compute_distortion_maps(
+            height=cameras_info.height + pixel_padding,
+            width=cameras_info.width + pixel_padding,
+            cameras_info=cameras_info
+        )
 
     mesh = trimesh.load_mesh(config['mesh_path'])
     ray_caster = trimesh.ray.ray_pyembree.RayMeshIntersector(mesh)
@@ -94,7 +95,8 @@ if __name__ == "__main__":
         )
 
         img_mesh = capture_scene(camera, scene)
-        img_mesh = cv2.remap(img_mesh, map_x, map_y, interpolation=cv2.INTER_LINEAR)
+        if config['apply_distortion']:
+            img_mesh = cv2.remap(img_mesh, map_x, map_y, interpolation=cv2.INTER_LINEAR)
 
         img_orig = cv2.imread(config['perspective_correction']['reference_image'])
 
@@ -144,7 +146,9 @@ if __name__ == "__main__":
             depth[depth_coords[:, 0], depth_coords[:, 1]] = positions[:, 2]
 
         depth = np.astype(1000 * np.abs(depth), np.uint16)  # Convert to millimeters
-        depth = cv2.remap(depth, map_x, map_y, interpolation=cv2.INTER_LINEAR)
+        if config['apply_distortion']:
+            depth = cv2.remap(depth, map_x, map_y, interpolation=cv2.INTER_LINEAR)
+
         if config['perspective_correction']['enabled'] and H is not None:  # Correct perspective if enabled and possible
             depth = cv2.warpPerspective(depth, H, camera.resolution[::-1])
             depth = adjust_warping(depth, H, H_inv, cameras_info.width, cameras_info.height)
@@ -155,7 +159,9 @@ if __name__ == "__main__":
         # Save scene image
         if config['save_scene']:
             img_mesh = capture_scene(camera, scene)
-            img_mesh = cv2.remap(img_mesh, map_x, map_y, interpolation=cv2.INTER_LINEAR)
+            if config['apply_distortion']:
+                img_mesh = cv2.remap(img_mesh, map_x, map_y, interpolation=cv2.INTER_LINEAR)
+
             if config['perspective_correction']['enabled'] and H is not None:
                 img_mesh = cv2.warpPerspective(img_mesh, H, camera.resolution[::-1])
                 img_mesh = adjust_warping(img_mesh, H, H_inv, cameras_info.width, cameras_info.height)

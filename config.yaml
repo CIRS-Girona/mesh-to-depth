@@ -5,6 +5,7 @@ camera_format: agisoft                     # Format (only 'agisoft' supported cu
 
 # --- Output ---
 output_folder: output/                     # Where depth maps/renders will be saved
+apply_distortion: true                     # Whether the distortion parameters should be taken into account
 save_scene: false                          # Set to true to save RGB renders (slower, memory intensive)
 
 perspective_correction:
