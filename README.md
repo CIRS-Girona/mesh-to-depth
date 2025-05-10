@@ -27,4 +27,24 @@ generation is enabled, not only will computational time increase, but so will re
     <td><img src="assets/scene.png" alt="Captured Scene"></td>
     <td><img src="assets/depth.png" alt="Depth Map"></td>
   </tr>
+  <tr>
+    <td><img src="assets/IMG_8318.jpg" alt="Original Image"></td>
+    <td><img src="assets/IMG_8318_scene.png" alt="Captured Scene"></td>
+    <td><img src="assets/IMG_8318.png" alt="Depth Map"></td>
+  </tr>
+  <tr>
+    <td><img src="assets/IMG_8333.jpg" alt="Original Image"></td>
+    <td><img src="assets/IMG_8333_scene.png" alt="Captured Scene"></td>
+    <td><img src="assets/IMG_8333.png" alt="Depth Map"></td>
+  </tr>
+  <tr>
+    <td><img src="assets/IMG_8339.jpg" alt="Original Image"></td>
+    <td><img src="assets/IMG_8339_scene.png" alt="Captured Scene"></td>
+    <td><img src="assets/IMG_8339.png" alt="Depth Map"></td>
+  </tr>
+  <tr>
+    <td><img src="assets/IMG_8346.jpg" alt="Original Image"></td>
+    <td><img src="assets/IMG_8346_scene.png" alt="Captured Scene"></td>
+    <td><img src="assets/IMG_8346.png" alt="Depth Map"></td>
+  </tr>
 </table>
