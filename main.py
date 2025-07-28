@@ -36,24 +36,6 @@ def capture_scene(camera, scene):
     return cv2.rotate(img_mesh, cv2.ROTATE_90_CLOCKWISE)
 
 
-def adjust_warping(image, H, H_inv, width, height):
-    # Get the position of the top-left pixel in the padded image
-    top_left = H_inv @ np.array((0, 0, 1), dtype=np.float32)
-    top_left /= top_left[2]
-
-    # Get the position of the top-left pixel in the warped image
-    top_left_warped = H @ top_left
-    top_left_warped /= top_left_warped[2]
-
-    # Crop image to desired resolution
-    start_y = int(round(top_left_warped[1]))
-    start_x = int(round(top_left_warped[0]))
-    end_y = start_y + height
-    end_x = start_x + width
-
-    return image[start_y:end_y, start_x: end_x]
-
-
 if __name__ == "__main__":
     with open('config.yaml', 'r') as file:
         config = yaml.safe_load(file)
@@ -63,11 +45,10 @@ if __name__ == "__main__":
 
     cameras_info = None
     if config['camera_format'] == 'agisoft':
-        cameras_info = Agisoft()
+        cameras_info = Agisoft.parse(config['cameras_path'])
     else:
         raise ValueError(f"Unknown camera info format {config['camera_format']}.")
 
-    cameras_info.parse(config['cameras_path'])
     print("Parsed camera info successfully")
 
     pixel_padding = config['perspective_correction']['padding'] if config['perspective_correction']['enabled'] else 0
@@ -117,7 +98,7 @@ if __name__ == "__main__":
         H, H_inv, matched_img = compute_homography(
             img_mesh,
             img_orig,
-            transform=config['perspective_correction']['transform'],
+            model=config['perspective_correction']['model'],
             min_match_count=config['perspective_correction']['minimum_match_count'],
             distance_ratio=config['perspective_correction']['distance_ratio'],
             ransac_threshold=config['perspective_correction']['ransac_threshold'],
