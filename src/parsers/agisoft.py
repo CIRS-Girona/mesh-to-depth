@@ -12,9 +12,6 @@ TRIMESH_T_AGISOFT = trimesh.transformations.rotation_matrix(np.pi, [0, 1, 0]) @\
 
 class Agisoft(Parser):
     def parse(self, file_path: str) -> List[Sensor]:
-        self.Ts.clear()
-        self.labels.clear()
-
         # Parse XML file
         tree = ET.parse(file_path)
         root = tree.getroot()
