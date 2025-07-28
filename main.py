@@ -1,6 +1,7 @@
 import numpy as np
 import trimesh, yaml, io, os, gc, cv2
 from PIL import Image
+from tqdm import tqdm
 
 from src.cameras import Agisoft
 from src.utils import compute_distortion_maps, compute_homography
@@ -63,24 +64,34 @@ if __name__ == "__main__":
     cameras_info = None
     if config['camera_format'] == 'agisoft':
         cameras_info = Agisoft()
-        cameras_info.parse(config['cameras_path'])
     else:
-        raise ValueError(f"Unknown camera format {config['camera_format']}.")
+        raise ValueError(f"Unknown camera info format {config['camera_format']}.")
+
+    cameras_info.parse(config['cameras_path'])
+    print("Parsed camera info successfully")
 
     pixel_padding = config['perspective_correction']['padding'] if config['perspective_correction']['enabled'] else 0
 
-    if config['apply_distortion']:
+    if config['distortion']['enabled']:
+        print("Computing distortion mappings...")
+
         map_x, map_y = compute_distortion_maps(
             height=cameras_info.height + pixel_padding,
             width=cameras_info.width + pixel_padding,
-            cameras_info=cameras_info
+            cameras_info=cameras_info,
+            max_iter=config['distortion']['max_iterations'],
+            tol=config['distortion']['tolerance'],
+            eta=config['distortion']['damping']
         )
 
+    print("Loading mesh...")
     mesh = trimesh.load_mesh(config['mesh_path'])
     ray_caster = trimesh.ray.ray_pyembree.RayMeshIntersector(mesh)
 
     H = None  # Initialize the homography matrix
     if config['perspective_correction']['enabled']:
+        print("Computing homography matrix...")
+
         reference_label = config['perspective_correction']['reference_image']
         reference_label = reference_label.split('.')[-2].split('/')[-1]
 
@@ -116,9 +127,9 @@ if __name__ == "__main__":
         img_file = os.path.join(config['output_folder'], "matches.png")
         cv2.imwrite(img_file, matched_img)
 
-    print("Loaded mesh. Will begin raytracing.")
+    print("Will begin raytracing.")
 
-    for i, (label, T) in enumerate(zip(cameras_info.labels, cameras_info.Ts)):
+    for i, (label, T) in enumerate(zip(tqdm(cameras_info.labels), cameras_info.Ts)):
         # Create scene with proper camera transform
         camera, scene = setup_camera_scene(
             mesh,
@@ -168,8 +179,6 @@ if __name__ == "__main__":
 
             img_file = os.path.join(config['output_folder'], f"{label}_scene.png")
             cv2.imwrite(img_file, img_mesh)
-
-        print(f"Finished processing: {label}")
 
         # Clean up
         del scene, ray_origins, ray_vectors, ray_pixels, valid_rays, hits, depth

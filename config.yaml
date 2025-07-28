@@ -8,13 +8,21 @@ output_folder: output/                     # Where depth maps/renders will be sa
 apply_distortion: true                     # Whether the distortion parameters should be taken into account
 save_scene: false                          # Set to true to save RGB renders (slower, memory intensive)
 
+distortion:
+  enabled: true
+  max_iterations: 1000                     # Maximum number of iterations before terminating
+  tolerance: 1e-3                          # Relative tolerance for convergence
+  damping: 0.1                             # Damping factor when calculating distortion mappings. Helps prevent
+                                           # overflows but will increase computational time
+
+
 perspective_correction:
   enabled: true                            # Enable/disable perspective correction
   reference_image: path/to/reference.png   # Reference image for alignment
                                            # (Filename must match a camera label in cameras_path)
   transform: affine                        # The transform type ('affine' or 'projective')
   minimum_match_count: 4                   # Minimum matches needed for homography
-  distance_ratio: 0.75                     # Ratio used for Lowe's ratio test when matching points.
+  distance_ratio: 0.70                     # Ratio used for Lowe's ratio test when matching points.
   ransac_threshold: 5.0                    # RANSAC threshold for homography outliers
   max_iterations: 10000                    # Maximum number of iterations for RANSAC
   padding: 1000                            # The amount of padding (in pixels) around the borders.

@@ -4,7 +4,7 @@ from skimage.measure import ransac
 from skimage.transform import ProjectiveTransform, AffineTransform
 
 
-def compute_distortion_maps(height, width, cameras_info, max_iter=1000, tol=1e-3):
+def compute_distortion_maps(height, width, cameras_info, max_iter=1000, tol=1e-3, eta=0.1):
     """
     Compute mapping from distorted pixels to undistorted coordinates.
     :return: map_x, map_y for cv2.remap()
@@ -29,8 +29,8 @@ def compute_distortion_maps(height, width, cameras_info, max_iter=1000, tol=1e-3
         xd = x * radial + 2*cameras_info.p1*x*y + cameras_info.p2*(r2 + 2*x**2)
         yd = y * radial + cameras_info.p1*(r2 + 2*y**2) + 2*cameras_info.p2*x*y
 
-        x_new = x - (xd - x_prime)
-        y_new = y - (yd - y_prime)
+        x_new = x - eta * (xd - x_prime)
+        y_new = y - eta * (yd - y_prime)
 
         if np.linalg.norm((x - x_new, y - y_new)) <= tol:
             break
