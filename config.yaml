@@ -1,12 +1,12 @@
 # --- Input Files ---
 mesh_path: path/to/mesh_file               # Accepts .obj, .ply, .stl
-images_path: path/to/images_folder         # Images folder path
 cameras_path: path/to/camera_file          # Camera info file path
 camera_format: agisoft                     # Format (only 'agisoft' supported currently)
+images_path: path/to/images_folder         # Images folder path
+extensions: [ png, jpg, jpeg ]             # Image formats available
 
 # --- Output ---
 output_folder: output/                     # Where depth maps/renders will be saved
-apply_distortion: true                     # Whether the distortion parameters should be taken into account
 save_scene: false                          # Set to true to save RGB renders (slower processing, memory intensive)
 
 # --- Settings ---
@@ -37,3 +37,7 @@ manual_view:
   enabled: false                           # Set a manual view for the ray-tracing. Disables per-camera rendering.                          
   position: [0, 0, 0]                      # A translation vector ([x, y, z]). Translation is applied from the center of the mesh.
   orientation: [1, 0, 0, 0]                # A quaternion array ([w, x, y, z]). If identity, the camera will be facing the mesh.
+  width: 1920                              # The resolution width of the image (pixels)
+  height: 1200                             # The resolution height of the image (pixels)
+  fx: 5042                                 # The focal length of the simulated camera in the x-axis (pixels)
+  fy: 5042                                 # The focal length of the simulated camera in the y-axis (pixels)

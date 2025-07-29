@@ -4,7 +4,8 @@ from PIL import Image
 from tqdm import tqdm
 from typing import List, Tuple
 
-from trimesh.transformations import scale_matrix
+from trimesh.transformations import quaternion_matrix
+from trimesh.ray.ray_pyembree import RayMeshIntersector
 
 from src.parsers import Agisoft, Meshroom
 from src.cameras import Sensor, Pose
@@ -39,6 +40,59 @@ def capture_scene(camera, scene):
     return cv2.rotate(img_mesh, cv2.ROTATE_90_CLOCKWISE)
 
 
+def raytrace(ray_caster: RayMeshIntersector, sensor: Sensor, pose: Pose, scale: float = 1.0, distort: bool = False, correct_perspective: bool = False, capture_mesh: bool = False):
+    # Create scene with proper camera transform
+    camera, scene = setup_camera_scene(
+        ray_caster.mesh,
+        sensor,
+        pose
+    )
+
+    scene.apply_scale(scale)
+    
+    # Generate rays and calculate intersections
+    ray_origins, ray_vectors, ray_pixels = scene.camera_rays()
+    valid_rays = ray_caster.intersects_any(ray_origins, ray_vectors)
+
+    # Find intersections for valid rays
+    hits = ray_caster.intersects_location(
+        ray_origins[valid_rays],
+        ray_vectors[valid_rays],
+        multiple_hits=False
+    )
+
+    # Create depth map
+    depth = np.full(camera.resolution, 0, dtype=np.float32)
+    if hits:
+        positions, pixels = hits[0], hits[1]
+        depth_coords = ray_pixels[valid_rays][pixels]
+        depth[depth_coords[:, 0], depth_coords[:, 1]] = positions[:, 2]
+
+    depth = np.astype(1000 * np.abs(depth), np.uint16)  # Convert to millimeters
+    if distort:
+        depth = cv2.remap(depth, sensor.map_x, sensor.map_y, interpolation=cv2.INTER_LINEAR)
+
+    if correct_perspective and sensor.H is not None:  # Correct perspective if enabled and possible
+        depth = cv2.warpPerspective(depth, sensor.H, camera.resolution[::-1])
+        depth = sensor.correct_perspective(depth)
+
+    img_mesh = None
+    if capture_mesh:
+        img_mesh = capture_scene(camera, scene)
+        if distort:
+            img_mesh = cv2.remap(img_mesh, sensor.map_x, sensor.map_y, interpolation=cv2.INTER_LINEAR)
+
+        if correct_perspective and sensor.H is not None:
+            img_mesh = cv2.warpPerspective(img_mesh, sensor.H, camera.resolution[::-1])
+            img_mesh = sensor.correct_perspective(img_mesh)
+
+    # Memory cleanup
+    del camera, scene, ray_origins, ray_vectors, ray_pixels, valid_rays, hits
+    gc.collect()
+
+    return depth, img_mesh
+
+
 if __name__ == "__main__":
     with open('config.yaml', 'r') as file:
         config = yaml.safe_load(file)
@@ -70,27 +124,37 @@ if __name__ == "__main__":
 
     print("Loading mesh...")
     mesh = trimesh.load_mesh(config['mesh_path'])
-    ray_caster = trimesh.ray.ray_pyembree.RayMeshIntersector(mesh)
+    ray_caster = RayMeshIntersector(mesh)
 
     if config['perspective_correction']['enabled']:
         print("Computing homography matrix...")
 
         for sensor in sensors:
-            reference_pose = random.choice(sensor.poses)  # Pick a random pose for feature matching
+            pose = random.choice(sensor.poses)  # Pick a random pose for feature matching
+
+            img_file = None
+            for ext in config['extensions']:
+                img_path = os.path.join(config['images_path'], f"{pose.label}.{ext}")
+                if os.path.exists(img_path):
+                    img_file = img_path
+                    break
+
+            if img_file is None:
+                raise FileNotFoundError(f"Couldn't find {pose.label} for any of the given extensions: {config['extensions']}")
+
+            img_orig = cv2.imread(img_file)
 
             camera, scene = setup_camera_scene(
                 mesh,
                 sensor,
-                reference_pose
+                pose
             )
 
             img_mesh = capture_scene(camera, scene)
             if config['apply_distortion']:
                 img_mesh = cv2.remap(img_mesh, sensor.map_x, sensor.map_y, interpolation=cv2.INTER_LINEAR)
 
-            img_orig = cv2.imread(config['perspective_correction']['reference_image'])
-
-            del scene, camera
+            del camera, scene
             gc.collect()
 
             matched_img = sensor.compute_homography(
@@ -109,7 +173,7 @@ if __name__ == "__main__":
     views: List[Tuple[Sensor, Pose]] = []
     [views.extend([(s, p) for p in s.poses]) for s in sensors]
 
-    scale = 1
+    scale = 1.0
     if config['scale_mesh']['enabled']:
         pose_1, pose_2 = None, None
 
@@ -130,58 +194,49 @@ if __name__ == "__main__":
 
     print("Will begin raytracing.")
 
-    for i, (sensor, pose) in enumerate(tqdm(views)):
-        # Create scene with proper camera transform
-        camera, scene = setup_camera_scene(
-            mesh,
+    if config['manual_view']['enabled']:
+        sensor = Sensor()
+
+        sensor.width = config['manual_view']['width']
+        sensor.height = config['manual_view']['height']
+
+        sensor.fx = config['manual_view']['fx']
+        sensor.fy = config['manual_view']['fy']
+
+        pose = Pose()
+        pose.T = np.eye(4)
+        pose.T[:3, :3] = quaternion_matrix(config['manual_view']['orientation'])
+        pose.T[:3, 3] = config['manual_view']['position']
+
+        depth, img_mesh = raytrace(
+            ray_caster,
             sensor,
-            pose
+            pose,
+            scale=scale,
+            distort=config['distortion']['enabled'],
+            correct_perspective=config['perspective_correction']['enabled'],
+            capture_mesh=config['save_scene']
         )
 
-        scene.apply_scale(scale)
-
-        # Generate rays and calculate intersections
-        ray_origins, ray_vectors, ray_pixels = scene.camera_rays()
-        valid_rays = ray_caster.intersects_any(ray_origins, ray_vectors)
-
-        # Find intersections for valid rays
-        hits = ray_caster.intersects_location(
-            ray_origins[valid_rays],
-            ray_vectors[valid_rays],
-            multiple_hits=False
+    for i, (sensor, pose) in enumerate(tqdm(views)):
+        depth, img_mesh = raytrace(
+            ray_caster,
+            sensor,
+            pose,
+            scale=scale,
+            distort=config['distortion']['enabled'],
+            correct_perspective=config['perspective_correction']['enabled'],
+            capture_mesh=config['save_scene']
         )
-
-        # Create depth map
-        depth = np.full(camera.resolution, 0, dtype=np.float32)
-        if hits:
-            positions, pixels = hits[0], hits[1]
-            depth_coords = ray_pixels[valid_rays][pixels]
-            depth[depth_coords[:, 0], depth_coords[:, 1]] = positions[:, 2]
-
-        depth = np.astype(1000 * np.abs(depth), np.uint16)  # Convert to millimeters
-        if config['apply_distortion']:
-            depth = cv2.remap(depth, sensor.map_x, sensor.map_y, interpolation=cv2.INTER_LINEAR)
-
-        if config['perspective_correction']['enabled'] and sensor.H is not None:  # Correct perspective if enabled and possible
-            depth = cv2.warpPerspective(depth, sensor.H, camera.resolution[::-1])
-            depth = sensor.correct_perspective(depth)
 
         img_file = os.path.join(config['output_folder'], f"{sensor.label}.png")
         cv2.imwrite(img_file, depth, (cv2.IMWRITE_PNG_COMPRESSION, 9))
 
         # Save scene image
-        if config['save_scene']:
-            img_mesh = capture_scene(camera, scene)
-            if config['apply_distortion']:
-                img_mesh = cv2.remap(img_mesh, sensor.map_x, sensor.map_y, interpolation=cv2.INTER_LINEAR)
-
-            if config['perspective_correction']['enabled'] and sensor.H is not None:
-                img_mesh = cv2.warpPerspective(img_mesh, sensor.H, camera.resolution[::-1])
-                img_mesh = sensor.correct_perspective(img_mesh)
-
+        if img_mesh is not None:
             img_file = os.path.join(config['output_folder'], f"{sensor.label}_scene.jpg")
             cv2.imwrite(img_file, img_mesh)
 
         # Clean up
-        del scene, ray_origins, ray_vectors, ray_pixels, valid_rays, hits, depth
+        del scene, img_mesh, depth
         gc.collect()
