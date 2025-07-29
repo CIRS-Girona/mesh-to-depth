@@ -39,6 +39,7 @@ class Sensor:
 
         # Perspective Correction
         self.padding: int = padding
+
         self.H: np.ndarray = None
         self.H_inv: np.ndarray = None
 

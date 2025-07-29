@@ -7,18 +7,18 @@ camera_format: agisoft                     # Format (only 'agisoft' supported cu
 # --- Output ---
 output_folder: output/                     # Where depth maps/renders will be saved
 apply_distortion: true                     # Whether the distortion parameters should be taken into account
-save_scene: false                          # Set to true to save RGB renders (slower, memory intensive)
+save_scene: false                          # Set to true to save RGB renders (slower processing, memory intensive)
 
 # --- Settings ---
 distortion:
-  enabled: true
+  enabled: true                            # Apply distortion to the depth maps so they match the original images captured
   max_iterations: 1000                     # Maximum number of iterations before terminating
   tolerance: 1e-3                          # Relative tolerance for convergence
   damping: 0.1                             # Damping factor when calculating distortion mappings. Helps prevent
                                            # overflows but will increase computational time
 
 perspective_correction:
-  enabled: true                            # Enable/disable perspective correction
+  enabled: true                            # Calculate homography so that the depth maps are pixel-accurate
   model: affine                            # The model type ('affine' or 'projective')
   minimum_match_count: 4                   # Minimum matches needed for homography
   distance_ratio: 0.70                     # Ratio used for Lowe's ratio test when matching points.
@@ -28,6 +28,12 @@ perspective_correction:
                                            # Will be cropped to adjust for warping by homography
 
 scale_mesh:
+  enabled: false                           # Rescale the mesh given known poses
   pose_1: filename_for_pose_1              # The id of the first pose along the mesh
   pose_2: filename_for_pose_2              # The id of the second pose along the mesh
   distance: 1.0                            # The true distance between the two poses
+
+manual_view:
+  enabled: false                           # Set a manual view for the ray-tracing. Disables per-camera rendering.                          
+  position: [0, 0, 0]                      # A translation vector ([x, y, z]). Translation is applied from the center of the mesh.
+  orientation: [1, 0, 0, 0]                # A quaternion array ([w, x, y, z]). If identity, the camera will be facing the mesh.
