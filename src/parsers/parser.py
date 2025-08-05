@@ -1,10 +1,10 @@
 from typing import List
 
-from ..cameras import Sensor, Pose
+from ..cameras import Sensor
 
 
 class Parser:
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     def parse(self, file_path: str) -> List[Sensor]:

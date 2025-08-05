@@ -4,11 +4,14 @@ from PIL import Image
 from tqdm import tqdm
 from typing import List, Tuple
 
-from trimesh.transformations import quaternion_matrix
+from trimesh.transformations import quaternion_matrix, rotation_matrix
 from trimesh.ray.ray_pyembree import RayMeshIntersector
 
 from src.parsers import Agisoft, Meshroom
 from src.cameras import Sensor, Pose
+
+# Disable upper limit for image pixels in Pillow library (Important for loading large texture maps)
+Image.MAX_IMAGE_PIXELS = None
 
 
 def setup_camera_scene(mesh, sensor: Sensor, pose: Pose):
@@ -142,20 +145,18 @@ if __name__ == "__main__":
             if img_file is None:
                 raise FileNotFoundError(f"Couldn't find {pose.label} for any of the given extensions: {config['extensions']}")
 
-            img_orig = cv2.imread(img_file)
+            print(f"For camera {sensor.id}, {pose.label} will be used for feature matching.")
 
-            camera, scene = setup_camera_scene(
-                mesh,
+            img_orig = cv2.imread(img_file)
+            _, img_mesh = raytrace(
+                ray_caster,
                 sensor,
-                pose
+                pose,
+                distort=config['distortion']['enabled'],
+                capture_mesh=True
             )
 
-            img_mesh = capture_scene(camera, scene)
-            if config['apply_distortion']:
-                img_mesh = cv2.remap(img_mesh, sensor.map_x, sensor.map_y, interpolation=cv2.INTER_LINEAR)
-
-            del camera, scene
-            gc.collect()
+            cv2.imwrite("scene.jpg", img_mesh)
 
             matched_img = sensor.compute_homography(
                 img_mesh,
@@ -172,6 +173,43 @@ if __name__ == "__main__":
 
     views: List[Tuple[Sensor, Pose]] = []
     [views.extend([(s, p) for p in s.poses]) for s in sensors]
+
+    print("Will begin raytracing.")
+
+    if config['manual_view']['enabled']:
+        sensor = Sensor()
+
+        sensor.width = config['manual_view']['width']
+        sensor.height = config['manual_view']['height']
+
+        sensor.fx = config['manual_view']['fx']
+        sensor.fy = config['manual_view']['fy']
+     
+        center = np.array((0, 0, 0))
+        if config['manual_view']['use_center']:
+            # Get mesh center and apply position relative to center   
+            center = (mesh.bounds[1, :] - mesh.bounds[0, :]) / 2 + mesh.bounds[0, :]
+
+        pose = Pose()
+        pose.T = quaternion_matrix(config['manual_view']['orientation'])
+        pose.T[:3, 3] = center + config['manual_view']['position']
+
+        # pose.T = pose.T @ rotation_matrix(np.pi, (1, 0, 0))
+
+        depth, img_mesh = raytrace(
+            ray_caster,
+            sensor,
+            pose,
+            capture_mesh=True
+        )
+
+        img_file = os.path.join(config['output_folder'], "depth.png")
+        cv2.imwrite(img_file, depth, (cv2.IMWRITE_PNG_COMPRESSION, 9))
+
+        img_file = os.path.join(config['output_folder'], "scene.jpg")
+        cv2.imwrite(img_file, img_mesh)
+
+        exit()
 
     scale = 1.0
     if config['scale_mesh']['enabled']:
@@ -191,32 +229,6 @@ if __name__ == "__main__":
             raise LookupError(f"Pose couldn't be found: {config['scale_mesh']['pose_2']}")
 
         scale = config['scale_mesh']['distance'] / np.linalg.norm(pose_1.T[:3, 3] - pose_2.T[:3, 3])
-
-    print("Will begin raytracing.")
-
-    if config['manual_view']['enabled']:
-        sensor = Sensor()
-
-        sensor.width = config['manual_view']['width']
-        sensor.height = config['manual_view']['height']
-
-        sensor.fx = config['manual_view']['fx']
-        sensor.fy = config['manual_view']['fy']
-
-        pose = Pose()
-        pose.T = np.eye(4)
-        pose.T[:3, :3] = quaternion_matrix(config['manual_view']['orientation'])
-        pose.T[:3, 3] = config['manual_view']['position']
-
-        depth, img_mesh = raytrace(
-            ray_caster,
-            sensor,
-            pose,
-            scale=scale,
-            distort=config['distortion']['enabled'],
-            correct_perspective=config['perspective_correction']['enabled'],
-            capture_mesh=config['save_scene']
-        )
 
     for i, (sensor, pose) in enumerate(tqdm(views)):
         depth, img_mesh = raytrace(
@@ -238,5 +250,5 @@ if __name__ == "__main__":
             cv2.imwrite(img_file, img_mesh)
 
         # Clean up
-        del scene, img_mesh, depth
+        del img_mesh, depth
         gc.collect()

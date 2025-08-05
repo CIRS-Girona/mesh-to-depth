@@ -8,7 +8,7 @@ from .pose import Pose
 
 
 class Sensor:
-    def __init__(self, padding: int = 0):
+    def __init__(self, padding: int = 0) -> None:
         self.id: str = None
         self.poses: List[Pose] = []
 
@@ -43,7 +43,7 @@ class Sensor:
         self.H: np.ndarray = None
         self.H_inv: np.ndarray = None
 
-    def compute_distortion_maps(self, max_iter: int = 1000, tol: float = 1e-3, eta: float = 0.1, dtype=np.float32) -> None:
+    def compute_distortion_maps(self, max_iter: int = 1000, tol: float = 1e-3, eta: float = 1.0, dtype=np.float32) -> None:
         """
         Compute mapping from distorted pixels to undistorted coordinates.
         :return: map_x, map_y for cv2.remap()

@@ -12,6 +12,10 @@ TRIMESH_T_AGISOFT = trimesh.transformations.rotation_matrix(np.pi, [0, 1, 0]) @\
 
 class Agisoft(Parser):
     def parse(self, file_path: str) -> List[Sensor]:
+        extension = file_path.split('.')[-1]
+        if extension.lower() != 'xml':
+            raise NameError(f"Invalid filename extension '{extension}', expected an XML file.")
+
         # Parse XML file
         tree = ET.parse(file_path)
         root = tree.getroot()
@@ -56,7 +60,9 @@ class Agisoft(Parser):
             s.k2 = float(calibration.find('k2').text)
             s.k3 = float(calibration.find('k3').text)
 
-            sensors[sensor.attrib['id']] = s
+            s.id = sensor.attrib['id']
+
+            sensors[s.id] = s
 
         # Parse camera views
         cameras = []

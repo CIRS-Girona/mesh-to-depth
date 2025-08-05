@@ -1,24 +1,24 @@
 # --- Input Files ---
-mesh_path: path/to/mesh_file               # Accepts .obj, .ply, .stl
-cameras_path: path/to/camera_file          # Camera info file path
-camera_format: agisoft                     # Format (only 'agisoft' supported currently)
-images_path: path/to/images_folder         # Images folder path
+mesh_path: temp/meshroom/mesh/texturedMesh.obj               # Accepts .obj, .ply, .stl
+cameras_path: temp/meshroom/cameras.sfm          # Camera info file path
+camera_format: meshroom                     # Format ('agisoft' or 'meshroom')
+images_path: temp/meshroom/images         # Images folder path
 extensions: [ png, jpg, jpeg ]             # Image formats available
 
 # --- Output ---
-output_folder: output/                     # Where depth maps/renders will be saved
-save_scene: false                          # Set to true to save RGB renders (slower processing, memory intensive)
+output_folder: temp/meshroom/output/                     # Where depth maps/renders will be saved
+save_scene: true                          # Set to true to save RGB renders (slower processing, memory intensive)
 
 # --- Settings ---
 distortion:
   enabled: true                            # Apply distortion to the depth maps so they match the original images captured
   max_iterations: 1000                     # Maximum number of iterations before terminating
-  tolerance: 1e-3                          # Relative tolerance for convergence
-  damping: 0.1                             # Damping factor when calculating distortion mappings. Helps prevent
+  tolerance: 0.001                         # Relative tolerance for convergence
+  damping: 1.0                             # Damping factor when calculating distortion mappings. Helps prevent
                                            # overflows but will increase computational time
 
 perspective_correction:
-  enabled: true                            # Calculate homography so that the depth maps are pixel-accurate
+  enabled: false                            # Calculate homography so that the depth maps are pixel-accurate
   model: affine                            # The model type ('affine' or 'projective')
   minimum_match_count: 4                   # Minimum matches needed for homography
   distance_ratio: 0.70                     # Ratio used for Lowe's ratio test when matching points.
@@ -34,10 +34,13 @@ scale_mesh:
   distance: 1.0                            # The true distance between the two poses
 
 manual_view:
-  enabled: false                           # Set a manual view for the ray-tracing. Disables per-camera rendering.                          
-  position: [0, 0, 0]                      # A translation vector ([x, y, z]). Translation is applied from the center of the mesh.
-  orientation: [1, 0, 0, 0]                # A quaternion array ([w, x, y, z]). If identity, the camera will be facing the mesh.
-  width: 1920                              # The resolution width of the image (pixels)
-  height: 1200                             # The resolution height of the image (pixels)
-  fx: 5042                                 # The focal length of the simulated camera in the x-axis (pixels)
-  fy: 5042                                 # The focal length of the simulated camera in the y-axis (pixels)
+  enabled: true                           # Set a manual view for the ray-tracing. Disables per-camera rendering.                          
+  use_center: false                       # Place the reference frame at the center of the mesh. Otherwise, use the mesh's reference frame.
+  # position: [-0.79651805344083715, -2.3788752788892413, 1.3040029373426589]                      # A translation vector ([x, y, z]). Translation is applied from the center of the mesh.
+  position: [5, -2.3788752788892413, 1.3040029373426589]                      # A translation vector ([x, y, z]). Translation is applied from the center of the mesh.
+  # position: [0, 0, 0]                      # A translation vector ([x, y, z]).
+  orientation: [0.40208939, 0.50337329, 0.50204577, 0.57696576]                # A quaternion array ([w, x, y, z]).
+  width: 4032                              # The resolution width of the image (pixels)
+  height: 3024                             # The resolution height of the image (pixels)
+  fx: 3277                                 # The focal length of the simulated camera in the x-axis (pixels)
+  fy: 3277                                 # The focal length of the simulated camera in the y-axis (pixels)
