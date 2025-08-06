@@ -18,8 +18,8 @@ distortion:
                                            # overflows but will increase computational time
 
 perspective_correction:
-  enabled: false                            # Calculate homography so that the depth maps are pixel-accurate
-  model: affine                            # The model type ('affine' or 'projective')
+  enabled: false                           # Calculate homography so that the depth maps are pixel-accurate
+  model: similarity                        # The model type ('euclidean', 'similarity', 'affine', or 'projective')
   minimum_match_count: 4                   # Minimum matches needed for homography
   distance_ratio: 0.70                     # Ratio used for Lowe's ratio test when matching points.
   ransac_threshold: 5.0                    # RANSAC threshold for homography outliers
@@ -37,7 +37,7 @@ manual_view:
   enabled: true                           # Set a manual view for the ray-tracing. Disables per-camera rendering.                          
   use_center: false                       # Place the reference frame at the center of the mesh. Otherwise, use the mesh's reference frame.
   # position: [-0.79651805344083715, -2.3788752788892413, 1.3040029373426589]                      # A translation vector ([x, y, z]). Translation is applied from the center of the mesh.
-  position: [5, -2.3788752788892413, 1.3040029373426589]                      # A translation vector ([x, y, z]). Translation is applied from the center of the mesh.
+  position: [-0.79651805344083715, -2.3788752788892413, 1.3040029373426589]                      # A translation vector ([x, y, z]). Translation is applied from the center of the mesh.
   # position: [0, 0, 0]                      # A translation vector ([x, y, z]).
   orientation: [0.40208939, 0.50337329, 0.50204577, 0.57696576]                # A quaternion array ([w, x, y, z]).
   width: 4032                              # The resolution width of the image (pixels)

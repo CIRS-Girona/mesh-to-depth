@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from skimage.measure import ransac
-from skimage.transform import ProjectiveTransform, AffineTransform
+from skimage.transform import EuclideanTransform, SimilarityTransform, AffineTransform, ProjectiveTransform
 from typing import List
 
 from .pose import Pose
@@ -100,7 +100,7 @@ class Sensor:
 
         return image[start_y:end_y, start_x: end_x]
 
-    def compute_homography(self, img1: np.ndarray, img2: np.ndarray, model: str = 'affine', min_match_count: int = 10, distance_ratio: float = 0.70, ransac_threshold: float = 5.0, max_iterations: int = 10000) -> np.ndarray:
+    def compute_homography(self, img1: np.ndarray, img2: np.ndarray, model: str = 'euclidean', min_match_count: int = 10, distance_ratio: float = 0.70, ransac_threshold: float = 5.0, max_iterations: int = 10000) -> np.ndarray:
         img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
         img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
 
@@ -130,9 +130,17 @@ class Sensor:
         src_pts = np.float32(src_pts).reshape(-1, 2)
         dst_pts = np.float32(dst_pts).reshape(-1, 2)
 
-        model_type = AffineTransform
-        if model == 'projective':
+        model_type = None
+        if model == 'euclidean':
+            model_type = EuclideanTransform
+        elif model == 'similarity':
+            model_type = SimilarityTransform
+        elif model == 'affine':
+            model_type = AffineTransform
+        elif model == 'projective':
             model_type = ProjectiveTransform
+        else:
+            raise ValueError(f"Unknown model type: {model}")
 
         # RANSAC
         model, inliers = ransac(

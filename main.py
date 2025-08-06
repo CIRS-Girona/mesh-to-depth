@@ -194,7 +194,7 @@ if __name__ == "__main__":
         pose.T = quaternion_matrix(config['manual_view']['orientation'])
         pose.T[:3, 3] = center + config['manual_view']['position']
 
-        # pose.T = pose.T @ rotation_matrix(np.pi, (1, 0, 0))
+        pose.T = pose.T @ rotation_matrix(np.pi/2, (1, 0, 0))
 
         depth, img_mesh = raytrace(
             ray_caster,
