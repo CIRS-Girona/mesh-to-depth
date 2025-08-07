@@ -215,7 +215,7 @@ if __name__ == "__main__":
                             )
 
                             if np.any(depth != 0):
-                                print(f"({i}/8, {j}/8, {k}/8) @ p @ ({x}/8, {y}/8, 0): {100 * np.sum(depth != 0) / (sensor.width * sensor.height)}")
+                                print(f"({i}/8, {j}/8, {k}/8) @ p @ ({x}/8, {y}/8, 0): {np.min(depth[depth != 0])}, {100 * np.sum(depth != 0) / (sensor.width * sensor.height)}%")
 
         img_file = os.path.join(config['output_folder'], "depth.png")
         cv2.imwrite(img_file, depth, (cv2.IMWRITE_PNG_COMPRESSION, 9))
