@@ -194,14 +194,28 @@ if __name__ == "__main__":
         pose.T = quaternion_matrix(config['manual_view']['orientation'])
         pose.T[:3, 3] = center + config['manual_view']['position']
 
-        pose.T = pose.T @ rotation_matrix(np.pi/2, (1, 0, 0))
+        for i in range(9):
+            for j in range(9):
+                for k in range(9):
+                    for x in range(9):
+                        for y in range(9):
+                            pose.T = np.eye(4) @\
+                                rotation_matrix(i * np.pi/8, (1, 0, 0)) @\
+                                rotation_matrix(j * np.pi/8, (0, 1, 0)) @\
+                                rotation_matrix(k * np.pi/8, (0, 0, 1)) @\
+                                pose.T @\
+                                rotation_matrix(x * np.pi/8, (1, 0, 0))@\
+                                rotation_matrix(y * np.pi/8, (0, 1, 0))
 
-        depth, img_mesh = raytrace(
-            ray_caster,
-            sensor,
-            pose,
-            capture_mesh=True
-        )
+                            depth, img_mesh = raytrace(
+                                ray_caster,
+                                sensor,
+                                pose,
+                                capture_mesh=False
+                            )
+
+                            if np.any(depth != 0):
+                                print(f"({i}/8, {j}/8, {k}/8) @ p @ ({x}/8, {y}/8, 0): {100 * np.sum(depth != 0) / (sensor.width * sensor.height)}")
 
         img_file = os.path.join(config['output_folder'], "depth.png")
         cv2.imwrite(img_file, depth, (cv2.IMWRITE_PNG_COMPRESSION, 9))
