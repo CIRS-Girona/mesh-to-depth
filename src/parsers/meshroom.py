@@ -1,15 +1,12 @@
 import numpy as np
 import json
-import trimesh.transformations
+from trimesh.transformations import rotation_matrix
 from typing import Dict, List
 
 from .parser import Parser
 from ..cameras import Sensor, Pose
 
-# TRIMESH_T_MESHROOM = trimesh.transformations.rotation_matrix(np.pi, [0, 1, 0]) @\
-#     trimesh.transformations.rotation_matrix(np.pi/2, [0, 0, 1])
-
-TRIMESH_T_MESHROOM = np.eye(4)
+TRIMESH_T_MESHROOM = rotation_matrix(np.pi, (1, 0, 0))
 
 
 class Meshroom(Parser):
@@ -74,7 +71,7 @@ class Meshroom(Parser):
             c_T_m[:3, 3] = translation
 
             pose = Pose()
-            pose.T = c_T_m @ TRIMESH_T_MESHROOM
+            pose.T = TRIMESH_T_MESHROOM @ c_T_m @ TRIMESH_T_MESHROOM
             pose.label = "".join(views[camera['poseId']][1].split("/")[-1].split('.')[:-1])
 
             sensors[views[camera['poseId']][0]].poses.append(pose)

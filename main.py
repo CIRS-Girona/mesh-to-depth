@@ -4,7 +4,7 @@ from PIL import Image
 from tqdm import tqdm
 from typing import List, Tuple
 
-from trimesh.transformations import quaternion_matrix, rotation_matrix
+from trimesh.transformations import quaternion_matrix
 from trimesh.ray.ray_pyembree import RayMeshIntersector
 
 from src.parsers import Agisoft, Meshroom
@@ -43,7 +43,15 @@ def capture_scene(camera, scene):
     return cv2.rotate(img_mesh, cv2.ROTATE_90_CLOCKWISE)
 
 
-def raytrace(ray_caster: RayMeshIntersector, sensor: Sensor, pose: Pose, scale: float = 1.0, distort: bool = False, correct_perspective: bool = False, capture_mesh: bool = False):
+def raytrace(
+        ray_caster: RayMeshIntersector,
+        sensor: Sensor,
+        pose: Pose,
+        scale: float = 1.0,
+        distort: bool = False,
+        correct_perspective: bool = False,
+        capture_mesh: bool = False
+):
     # Create scene with proper camera transform
     camera, scene = setup_camera_scene(
         ray_caster.mesh,
@@ -79,6 +87,14 @@ def raytrace(ray_caster: RayMeshIntersector, sensor: Sensor, pose: Pose, scale: 
         depth = cv2.warpPerspective(depth, sensor.H, camera.resolution[::-1])
         depth = sensor.correct_perspective(depth)
 
+    heatmap = np.astype(depth, np.float32)
+    if np.any(heatmap != 0):
+        heatmap[heatmap == 0] = np.min(heatmap[heatmap != 0]) - 1
+        heatmap -= np.min(heatmap)
+        heatmap /= np.max(heatmap)
+
+    heatmap = cv2.applyColorMap(np.astype(255 * heatmap, np.uint8), cv2.COLORMAP_JET)
+
     img_mesh = None
     if capture_mesh:
         img_mesh = capture_scene(camera, scene)
@@ -93,7 +109,7 @@ def raytrace(ray_caster: RayMeshIntersector, sensor: Sensor, pose: Pose, scale: 
     del camera, scene, ray_origins, ray_vectors, ray_pixels, valid_rays, hits
     gc.collect()
 
-    return depth, img_mesh
+    return depth, heatmap, img_mesh
 
 
 if __name__ == "__main__":
@@ -148,15 +164,13 @@ if __name__ == "__main__":
             print(f"For camera {sensor.id}, {pose.label} will be used for feature matching.")
 
             img_orig = cv2.imread(img_file)
-            _, img_mesh = raytrace(
+            _, _, img_mesh = raytrace(
                 ray_caster,
                 sensor,
                 pose,
                 distort=config['distortion']['enabled'],
                 capture_mesh=True
             )
-
-            cv2.imwrite("scene.jpg", img_mesh)
 
             matched_img = sensor.compute_homography(
                 img_mesh,
@@ -194,31 +208,18 @@ if __name__ == "__main__":
         pose.T = quaternion_matrix(config['manual_view']['orientation'])
         pose.T[:3, 3] = center + config['manual_view']['position']
 
-        for i in range(9):
-            for j in range(9):
-                for k in range(9):
-                    for x in range(9):
-                        for y in range(9):
-                            pose.T = np.eye(4) @\
-                                rotation_matrix(i * np.pi/8, (1, 0, 0)) @\
-                                rotation_matrix(j * np.pi/8, (0, 1, 0)) @\
-                                rotation_matrix(k * np.pi/8, (0, 0, 1)) @\
-                                pose.T @\
-                                rotation_matrix(x * np.pi/8, (1, 0, 0))@\
-                                rotation_matrix(y * np.pi/8, (0, 1, 0))
-
-                            depth, img_mesh = raytrace(
-                                ray_caster,
-                                sensor,
-                                pose,
-                                capture_mesh=False
-                            )
-
-                            if np.any(depth != 0):
-                                print(f"({i}/8, {j}/8, {k}/8) @ p @ ({x}/8, {y}/8, 0): {np.min(depth[depth != 0])}, {100 * np.sum(depth != 0) / (sensor.width * sensor.height)}%")
+        depth, heatmap, img_mesh = raytrace(
+            ray_caster,
+            sensor,
+            pose,
+            capture_mesh=True
+        )
 
         img_file = os.path.join(config['output_folder'], "depth.png")
         cv2.imwrite(img_file, depth, (cv2.IMWRITE_PNG_COMPRESSION, 9))
+
+        img_file = os.path.join(config['output_folder'], "heatmap.jpg")
+        cv2.imwrite(img_file, heatmap)
 
         img_file = os.path.join(config['output_folder'], "scene.jpg")
         cv2.imwrite(img_file, img_mesh)
@@ -245,7 +246,7 @@ if __name__ == "__main__":
         scale = config['scale_mesh']['distance'] / np.linalg.norm(pose_1.T[:3, 3] - pose_2.T[:3, 3])
 
     for i, (sensor, pose) in enumerate(tqdm(views)):
-        depth, img_mesh = raytrace(
+        depth, heatmap, img_mesh = raytrace(
             ray_caster,
             sensor,
             pose,
@@ -255,12 +256,15 @@ if __name__ == "__main__":
             capture_mesh=config['save_scene']
         )
 
-        img_file = os.path.join(config['output_folder'], f"{sensor.label}.png")
+        img_file = os.path.join(config['output_folder'], f"{pose.label}.png")
         cv2.imwrite(img_file, depth, (cv2.IMWRITE_PNG_COMPRESSION, 9))
+
+        img_file = os.path.join(config['output_folder'], f"{pose.label}_heatmap.jpg")
+        cv2.imwrite(img_file, heatmap)
 
         # Save scene image
         if img_mesh is not None:
-            img_file = os.path.join(config['output_folder'], f"{sensor.label}_scene.jpg")
+            img_file = os.path.join(config['output_folder'], f"{pose.label}_scene.jpg")
             cv2.imwrite(img_file, img_mesh)
 
         # Clean up
