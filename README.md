@@ -17,25 +17,20 @@ generation is enabled, not only will computational time increase, but so will re
 
 ## Example Output
 
-<table style="width:100%; text-align: center;">
-  <tr>
-    <th style="text-align: center;">Original Image</th>
-    <th style="text-align: center;">Scene Image</th>
-    <th style="text-align: center;">Heat Map</th>
-  </tr>
-  <tr>
-    <td> <img src="assets/cc_IMG-4938.jpg" alt="Original Image" /> </td>
-    <td> <img src="assets/cc_IMG-4938_scene.jpg" alt="Captured Scene" /> </td>
-    <td> <img src="assets/cc_IMG-4938_heatmap.jpg" alt="Heat Map" /> </td>
-  </tr>
-  <tr>
-    <td> <img src="assets/cc_IMG-4943.jpg" alt="Original Image"/> </td>
-    <td> <img src="assets/cc_IMG-4943_scene.jpg" alt="Captured Scene"/> </td>
-    <td> <img src="assets/cc_IMG-4943_heatmap.jpg" alt="Heat Map"/> </td>
-  </tr>
-  <tr>
-    <td> <img src="assets/cc_IMG-4945.jpg" alt="Original Image"/> </td>
-    <td> <img src="assets/cc_IMG-4945_scene.jpg" alt="Captured Scene"/> </td>
-    <td> <img src="assets/cc_IMG-4945_heatmap.jpg" alt="Heat Map"/> </td>
-  </tr>
-</table>
+<table style="width:100%; text-align: center;"> 
+   <tr> 
+     <td> <img src="assets/cc_IMG-4938.jpg" alt="Original Image"/> </td> 
+     <td> <img src="assets/cc_IMG-4938_scene.jpg" alt="Captured Scene"/> </td> 
+     <td> <img src="assets/cc_IMG-4938_heatmap.jpg" alt="Heat Map"/> </td> 
+   </tr> 
+   <tr> 
+     <td> <img src="assets/cc_IMG-4943.jpg" alt="Original Image"/> </td> 
+     <td> <img src="assets/cc_IMG-4943_scene.jpg" alt="Captured Scene"/> </td> 
+     <td> <img src="assets/cc_IMG-4943_heatmap.jpg" alt="Heat Map"/> </td> 
+   </tr> 
+   <tr> 
+     <td> <img src="assets/cc_IMG-4945.jpg" alt="Original Image"/> </td> 
+     <td> <img src="assets/cc_IMG-4945_scene.jpg" alt="Captured Scene"/> </td> 
+     <td> <img src="assets/cc_IMG-4945_heatmap.jpg" alt="Heat Map"/> </td> 
+   </tr> 
+ </table>
