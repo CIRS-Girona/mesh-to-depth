@@ -7,9 +7,20 @@ from .parser import Parser
 from ..cameras import Sensor, Pose
 
 TRIMESH_T_MESHROOM = rotation_matrix(np.pi, (1, 0, 0))
+TRIMESH_T_MESHROOM_RIG = rotation_matrix(np.pi / 2, (0, 0, 1))
 
 
 class Meshroom(Parser):
+    def extractTransformation(self, transform: Dict[str, List[str]]) -> np.ndarray:
+        rotation = np.array([float(x) for x in transform['rotation']]).reshape((3, 3))
+        translation = np.array([float(x) for x in transform['center']]).reshape((3, ))
+
+        T = np.eye(4)
+        T[:3, :3] = rotation
+        T[:3, 3] = translation
+
+        return T
+
     def parse(self, file_path: str) -> List[Sensor]:
         extension = file_path.split('.')[-1]
         if extension.lower() != 'sfm':
@@ -56,25 +67,31 @@ class Meshroom(Parser):
             sensors[s.id] = s
 
         # Parse camera views
-        views = {
-            view['poseId']: (view['intrinsicId'], view['path'])
-            for view in data['views']
+        rigs = {}
+        if data.get('rigs', None) is not None:
+            rigs = {
+                rig['rigId']: rig['subPoses']
+                for rig in data['rigs']
+            }
+
+        poses = {
+            pose['poseId']: pose['pose']['transform']
+            for pose in data['poses']
         }
 
-        for camera in data['poses']:
-            transform = camera['pose']['transform']
-            rotation = np.array([float(x) for x in transform['rotation']]).reshape((3, 3))
-            translation = np.array([float(x) for x in transform['center']]).reshape((3, ))
+        for view in data['views']:
+            c_T_m = self.extractTransformation(poses[view['poseId']])
 
-            c_T_m = np.eye(4)
-            c_T_m[:3, :3] = rotation
-            c_T_m[:3, 3] = translation
+            m_T_r = np.eye(4)
+            if view.get('rigId', None) is not None:
+                m_T_r = self.extractTransformation(rigs[view['rigId']][int(view['subPoseId'])]['pose'])
+                m_T_r = m_T_r @ TRIMESH_T_MESHROOM_RIG
 
             pose = Pose()
-            pose.T = TRIMESH_T_MESHROOM @ c_T_m @ TRIMESH_T_MESHROOM
-            pose.label = "".join(views[camera['poseId']][1].split("/")[-1].split('.')[:-1])
+            pose.T = TRIMESH_T_MESHROOM @ c_T_m @ m_T_r @ TRIMESH_T_MESHROOM
+            pose.label = "".join(view['path'].split("/")[-1].split('.')[:-1])
 
-            sensors[views[camera['poseId']][0]].poses.append(pose)
+            sensors[view['intrinsicId']].poses.append(pose)
 
         return list(sensors.values())
 

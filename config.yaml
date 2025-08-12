@@ -1,13 +1,13 @@
 # --- Input Files ---
-mesh_path: temp/mesh/texturedMesh.obj               # Accepts .obj, .ply, .stl
-cameras_path: temp/cameras.sfm          # Camera info file path
-camera_format: meshroom                     # Format ('agisoft' or 'meshroom')
-images_path: temp/images         # Images folder path
-extensions: [ png, jpg, jpeg ]             # Image formats available
+mesh_path: temp/mesh/texturedMesh.ply      # Accepts .obj, .ply, .stl
+cameras_path: temp/cameras.sfm             # Camera info file path
+camera_format: meshroom                    # Format ('agisoft' or 'meshroom')
+images_path: temp/images                   # Images folder path
+extensions: [ png, jpg, jpeg ]             # Image formats found in the images folder
 
 # --- Output ---
-output_folder: temp/output/               # Where depth maps/renders will be saved
-save_scene: false                         # Set to true to save RGB renders (slower processing, memory intensive)
+output_folder: temp/output/                # Where depth maps/renders will be saved
+save_scene: false                          # Set to true to save RGB renders (slower processing, memory intensive)
 
 # --- Options ---
 distortion:

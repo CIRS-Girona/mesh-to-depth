@@ -86,8 +86,6 @@ if __name__ == "__main__":
             capture_mesh=True
         )
 
-        print(np.min(depth[depth != 0]), np.max(depth))
-
         img_file = os.path.join(config['output_folder'], "depth.png")
         cv2.imwrite(img_file, depth, (cv2.IMWRITE_PNG_COMPRESSION, 9))
 

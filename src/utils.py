@@ -33,7 +33,7 @@ def setup_camera_scene(mesh, sensor: Sensor, pose: Pose):
 def capture_scene(camera, scene):
     img_mesh = scene.save_image(resolution=camera.resolution, visible=True)
     img_mesh = np.array(Image.open(io.BytesIO(img_mesh)))
-    return cv2.rotate(img_mesh, cv2.ROTATE_90_CLOCKWISE)
+    return cv2.cvtColor(cv2.rotate(img_mesh, cv2.ROTATE_90_CLOCKWISE), cv2.COLOR_RGB2BGR)
 
 
 def raytrace(
@@ -83,7 +83,7 @@ def raytrace(
     if np.any(heatmap != 0):
         heatmap[heatmap == 0] = np.min(heatmap[heatmap != 0]) - 1
         heatmap -= np.min(heatmap)
-        heatmap /= np.max(heatmap)
+        heatmap /= np.maximum(np.max(heatmap), 1)
 
     heatmap = cv2.applyColorMap(np.astype(255 * heatmap, np.uint8), cv2.COLORMAP_INFERNO)
 
