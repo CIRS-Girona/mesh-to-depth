@@ -151,7 +151,11 @@ if __name__ == "__main__":
 
     print("Will begin raytracing.")
 
+    completed = os.listdir(config['output_folder'])
     for i, (sensor, pose) in enumerate(tqdm(views)):
+        if f"{pose.label}.png" in completed:  # Skip already processed poses
+            continue
+
         depth, heatmap, img_mesh = raytrace(
             ray_caster,
             sensor,

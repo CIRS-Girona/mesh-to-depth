@@ -18,6 +18,8 @@ MeshToDepth is a Python tool designed to generate depth maps from a 3D mesh (`.o
 
 **Note:** The quality of the output depth maps and rendered scenes is directly dependent on the quality of the input mesh.
 
+**Another Note:** This toolkit picks up from the last pose processed in-case its workflow was interrupted. If you would like to recompute everything, please empty the output folder first before running.
+
 ## Recommended Mesh File Formats
 
 The choice of mesh file format significantly impacts the performance of depth map processing, affecting both **loading speed** and **computational resource** consumption. For optimal performance, we strongly recommend using a **binary file format** over an ASCII-based one.
