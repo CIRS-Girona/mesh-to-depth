@@ -146,7 +146,7 @@ if __name__ == "__main__":
                 max_iterations=config['perspective_correction']['max_iterations'],
             )
 
-            img_file = os.path.join(config['output_folder'], "matches.jpg")
+            img_file = os.path.join(config['output_folder'], f"matches_{sensor.id}.jpg")
             cv2.imwrite(img_file, matched_img)
 
     print("Will begin raytracing.")

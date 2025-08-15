@@ -6,8 +6,8 @@ from typing import Dict, List
 from .parser import Parser
 from ..cameras import Sensor, Pose
 
-TRIMESH_T_MESHROOM = rotation_matrix(np.pi, (1, 0, 0))
-TRIMESH_T_MESHROOM_RIG = rotation_matrix(np.pi / 2, (0, 0, 1))
+TRIMESH_T_MESHROOM_PRE = rotation_matrix(np.pi, (1, 0, 0))
+TRIMESH_T_MESHROOM_POST = rotation_matrix(np.pi, (1, 0, 0)) @ rotation_matrix(-np.pi / 2, (0, 0, 1))
 
 
 class Meshroom(Parser):
@@ -85,10 +85,10 @@ class Meshroom(Parser):
             m_T_r = np.eye(4)
             if view.get('rigId', None) is not None:
                 m_T_r = self.extractTransformation(rigs[view['rigId']][int(view['subPoseId'])]['pose'])
-                m_T_r = m_T_r @ TRIMESH_T_MESHROOM_RIG
+                m_T_r = m_T_r
 
             pose = Pose()
-            pose.T = TRIMESH_T_MESHROOM @ c_T_m @ m_T_r @ TRIMESH_T_MESHROOM
+            pose.T = TRIMESH_T_MESHROOM_PRE @ c_T_m @ m_T_r @ TRIMESH_T_MESHROOM_POST
             pose.label = "".join(view['path'].split("/")[-1].split('.')[:-1])
 
             sensors[view['intrinsicId']].poses.append(pose)
