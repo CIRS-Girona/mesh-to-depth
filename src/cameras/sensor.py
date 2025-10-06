@@ -6,6 +6,8 @@ from typing import List
 
 from .pose import Pose
 
+MAX_FEATURE_COUNT = 100_000
+
 
 class Sensor:
     def __init__(self, padding: int = 0) -> None:
@@ -108,10 +110,16 @@ class Sensor:
         sift = cv2.SIFT_create()
         bf = cv2.BFMatcher()
 
-        # find the keypoints and descriptors with ORB
+        # find the keypoints and descriptors with SIFT
         kp1, des1 = sift.detectAndCompute(img1, None)
         kp2, des2 = sift.detectAndCompute(img2, None)
+
+        if len(des1) > MAX_FEATURE_COUNT:
+            des1 = des1[:MAX_FEATURE_COUNT]
         
+        if len(des2) > MAX_FEATURE_COUNT:
+            des2 = des2[:MAX_FEATURE_COUNT]
+
         # Apply ratio test
         matches = []
         for m, n in bf.knnMatch(des1, des2, k=2):

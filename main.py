@@ -112,6 +112,11 @@ if __name__ == "__main__":
     if config['perspective_correction']['enabled']:
         print("Computing homography matrix...")
 
+        clahe = cv2.createCLAHE(
+            clipLimit=config['perspective_correction']['clahe_limit'],
+            tileGridSize=(config['perspective_correction']['clahe_grid'], config['perspective_correction']['clahe_grid'])
+        )
+
         for sensor in sensors:
             pose = random.choice(sensor.poses)  # Pick a random pose for feature matching
 
@@ -127,7 +132,10 @@ if __name__ == "__main__":
 
             print(f"For camera {sensor.id}, {pose.label} will be used for feature matching.")
 
-            img_orig = cv2.imread(img_file)
+            img_orig = cv2.cvtColor(cv2.imread(img_file), cv2.COLOR_BGR2HSV)
+            img_orig[:, :, 2] = clahe.apply(img_orig[:, :, 2])
+            img_orig = cv2.cvtColor(img_orig, cv2.COLOR_HSV2BGR)
+
             _, _, img_mesh = raytrace(
                 ray_caster,
                 sensor,
@@ -135,6 +143,10 @@ if __name__ == "__main__":
                 distort=config['distortion']['enabled'],
                 capture_mesh=True
             )
+
+            img_mesh = cv2.cvtColor(img_mesh, cv2.COLOR_BGR2HSV)
+            img_mesh[:, :, 2] = clahe.apply(img_mesh[:, :, 2])
+            img_mesh = cv2.cvtColor(img_mesh, cv2.COLOR_HSV2BGR)
 
             matched_img = sensor.compute_homography(
                 img_mesh,

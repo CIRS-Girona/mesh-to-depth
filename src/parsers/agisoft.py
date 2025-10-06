@@ -23,14 +23,18 @@ class Agisoft(Parser):
         # Parse chunk transform
         chunk = root.find('chunk')
         transform = chunk.find('transform')
-        rotation = np.array([float(x) for x in transform.find('rotation').text.split()]).reshape(3, 3)
-        translation = np.array([float(x) for x in transform.find('translation').text.split()])
-        scale = float(transform.find('scale').text)
 
         # Build chunk transformation matrix
         m_T_c = np.eye(4)  # Camera to mesh
-        m_T_c[:3, :3] = rotation * scale  # Transpose for proper rotation matrix
-        m_T_c[:3, 3] = translation
+
+        if transform.find('rotation') is not None:
+            m_T_c[:3, :3] = np.array([float(x) for x in transform.find('rotation').text.split()]).reshape(3, 3)
+
+        if transform.find('scale') is not None:
+            m_T_c[:3, :3] *= float(transform.find('scale').text)
+
+        if transform.find('translation') is not None:
+            m_T_c[:3, 3] = np.array([float(x) for x in transform.find('translation').text.split()])
 
         # Parse calibration parameters
         sensors: Dict[str, Sensor] = {}

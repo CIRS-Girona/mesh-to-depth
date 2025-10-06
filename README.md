@@ -39,7 +39,6 @@ In contrast, ASCII-based formats like **`.obj`** and **`.gltf`** can consume up 
 * **For untextured meshes**: We recommend using the **`.stl`** format. It's a simple, robust, and widely supported standard perfect for meshes without color information.
 * **For meshes with color/texture**: We recommend the **`.ply`** format. It offers excellent support for color data and has a large, active community.
 
-
 ### Converting File Formats
 
 If you need to convert your mesh files, a great open-source tool is **[Meshlab](https://github.com/cnr-isti-vclab/meshlab)**. It's a popular, graphical software solution that supports a wide variety of mesh processing tasks and file formats.
@@ -47,19 +46,24 @@ If you need to convert your mesh files, a great open-source tool is **[Meshlab](
 ## Example Output
 
 <table style="width:100%; text-align: center;"> 
-   <tr> 
-     <td> <img src="assets/cc_IMG-4938.jpg" alt="Original Image"/> </td> 
-     <td> <img src="assets/cc_IMG-4938_scene.jpg" alt="Captured Scene"/> </td> 
-     <td> <img src="assets/cc_IMG-4938_heatmap.jpg" alt="Heat Map"/> </td> 
-   </tr> 
-   <tr> 
-     <td> <img src="assets/cc_IMG-4943.jpg" alt="Original Image"/> </td> 
-     <td> <img src="assets/cc_IMG-4943_scene.jpg" alt="Captured Scene"/> </td> 
-     <td> <img src="assets/cc_IMG-4943_heatmap.jpg" alt="Heat Map"/> </td> 
-   </tr> 
-   <tr> 
-     <td> <img src="assets/cc_IMG-4945.jpg" alt="Original Image"/> </td> 
-     <td> <img src="assets/cc_IMG-4945_scene.jpg" alt="Captured Scene"/> </td> 
-     <td> <img src="assets/cc_IMG-4945_heatmap.jpg" alt="Heat Map"/> </td> 
-   </tr> 
- </table>
+  <tr>
+    <th>Original Image</th>
+    <th>Captured Scene</th>
+    <th>Heat Map</th>
+  </tr>
+  <tr> 
+    <td> <img src="assets/cc_IMG-4938.jpg" alt="Original Image"/> </td> 
+    <td> <img src="assets/cc_IMG-4938_scene.jpg" alt="Captured Scene"/> </td> 
+    <td> <img src="assets/cc_IMG-4938_heatmap.jpg" alt="Heat Map"/> </td> 
+  </tr> 
+  <tr> 
+    <td> <img src="assets/cc_IMG-4943.jpg" alt="Original Image"/> </td> 
+    <td> <img src="assets/cc_IMG-4943_scene.jpg" alt="Captured Scene"/> </td> 
+    <td> <img src="assets/cc_IMG-4943_heatmap.jpg" alt="Heat Map"/> </td> 
+  </tr> 
+  <tr> 
+    <td> <img src="assets/cc_IMG-4945.jpg" alt="Original Image"/> </td> 
+    <td> <img src="assets/cc_IMG-4945_scene.jpg" alt="Captured Scene"/> </td> 
+    <td> <img src="assets/cc_IMG-4945_heatmap.jpg" alt="Heat Map"/> </td> 
+  </tr> 
+</table>
