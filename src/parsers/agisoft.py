@@ -26,7 +26,6 @@ class Agisoft(Parser):
 
         # Build chunk transformation matrix
         m_T_c = np.eye(4)  # Camera to mesh
-
         if transform.find('rotation') is not None:
             m_T_c[:3, :3] = np.array([float(x) for x in transform.find('rotation').text.split()]).reshape(3, 3)
 
