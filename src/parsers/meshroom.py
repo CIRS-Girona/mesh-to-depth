@@ -80,6 +80,9 @@ class Meshroom(Parser):
         }
 
         for view in data['views']:
+            if poses.get(view['poseId'], None) is None:
+                continue
+
             c_T_m = self.extractTransformation(poses[view['poseId']])
 
             m_T_r = np.eye(4)
