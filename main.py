@@ -1,8 +1,10 @@
 import numpy as np
 import trimesh, yaml, os, cv2
+import multiprocessing as mp
 from PIL import Image
 from tqdm import tqdm
 from typing import List, Tuple
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from trimesh.transformations import quaternion_matrix
 from trimesh.ray.ray_pyembree import RayMeshIntersector
@@ -11,11 +13,51 @@ from src.utils import raytrace
 from src.parsers import Agisoft, Meshroom
 from src.cameras import Sensor, Pose
 
-# Disable upper limit for image pixels in Pillow library (Important for loading large texture maps)
+# Disable upper limit for image pixels in Pillow library
 Image.MAX_IMAGE_PIXELS = None
 
+# Prevent OpenCV from deadlocking when combined with os.fork()
+cv2.setNumThreads(0)
+
+# ---------------------------------------------------------
+# Global Memory (Shared across forks via Copy-On-Write)
+# ---------------------------------------------------------
+
+# This will be initialized in the main process and inherited by the workers
+global_ray_caster = None
+
+def process_view_forked(view_data: Tuple[Sensor, Pose], output_folder: str, scale: float, distort: bool):
+    """
+    Worker function. Thanks to 'fork', it can freely read global_ray_caster 
+    without duplicating the memory or pickling C-pointers.
+    """
+    sensor, pose = view_data
+    
+    # Access the shared C-level raycaster
+    depth, heatmap = raytrace(
+        global_ray_caster,
+        sensor,
+        pose,
+        scale=scale,
+        distort=distort,
+    )
+
+    img_file_depth = os.path.join(output_folder, f"{pose.label}.png")
+    cv2.imwrite(img_file_depth, depth, (cv2.IMWRITE_PNG_COMPRESSION, 9))
+
+    img_file_heatmap = os.path.join(output_folder, f"{pose.label}_heatmap.jpg")
+    cv2.imwrite(img_file_heatmap, heatmap)
+
+    return pose.label
+
+# ---------------------------------------------------------
+# Main Script
+# ---------------------------------------------------------
 
 if __name__ == "__main__":
+    # 1. Force the fork method immediately
+    mp.set_start_method('fork', force=True)
+
     with open('config.yaml', 'r') as file:
         config = yaml.safe_load(file)
 
@@ -35,9 +77,10 @@ if __name__ == "__main__":
 
     print("Parsed camera info successfully")
 
-    print("Loading mesh...")
-    mesh = trimesh.load_mesh(config['mesh_path'])
-    ray_caster = RayMeshIntersector(mesh)
+    # 2. Load the mesh and build the BVH tree ONCE
+    print("Loading mesh and building BVH tree in main memory...")
+    main_mesh = trimesh.load_mesh(config['mesh_path'])
+    global_ray_caster = RayMeshIntersector(main_mesh)
 
     scale = 1.0
     if config['scale_mesh']['enabled']:
@@ -62,28 +105,24 @@ if __name__ == "__main__":
         print("Computing manual view...")
 
         sensor = Sensor()
-
         sensor.width = config['manual_view']['width']
         sensor.height = config['manual_view']['height']
-
         sensor.fx = config['manual_view']['fx']
         sensor.fy = config['manual_view']['fy']
      
         center = np.array((0, 0, 0))
         if config['manual_view']['use_center']:
-            # Get mesh center and apply position relative to center
-            center = (mesh.bounds[1, :] - mesh.bounds[0, :]) / 2 + mesh.bounds[0, :]
+            center = (main_mesh.bounds[1, :] - main_mesh.bounds[0, :]) / 2 + main_mesh.bounds[0, :]
 
         pose = Pose()
         pose.T = quaternion_matrix(config['manual_view']['orientation'])
         pose.T[:3, 3] = center + config['manual_view']['position']
 
-        depth, heatmap, img_mesh = raytrace(
-            ray_caster,
+        depth, heatmap = raytrace(
+            global_ray_caster,
             sensor,
             pose,
             scale=scale,
-            capture_mesh=True
         )
 
         img_file = os.path.join(config['output_folder'], "depth.png")
@@ -96,7 +135,6 @@ if __name__ == "__main__":
 
     if config['distortion']['enabled']:
         print("Computing distortion mappings...")
-
         for sensor in sensors:
             sensor.compute_distortion_maps(
                 max_iter=config['distortion']['max_iterations'],
@@ -104,23 +142,39 @@ if __name__ == "__main__":
                 eta=config['distortion']['damping']
             )
 
-    print("Will begin raytracing.")
-
+    print("Filtering completed views...")
     completed = set(os.listdir(config['output_folder']))
-    for i, (sensor, pose) in enumerate(tqdm(views)):
-        if f"{pose.label}.png" in completed:  # Skip already processed poses
-            continue
+    views_to_process = [
+        (s, p) for (s, p) in views 
+        if f"{p.label}.png" not in completed
+    ]
 
-        depth, heatmap = raytrace(
-            ray_caster,
-            sensor,
-            pose,
-            scale=scale,
-            distort=config['distortion']['enabled'],
-        )
+    if not views_to_process:
+        print("All views have already been processed.")
+        exit(0)
 
-        img_file = os.path.join(config['output_folder'], f"{pose.label}.png")
-        cv2.imwrite(img_file, depth, (cv2.IMWRITE_PNG_COMPRESSION, 9))
+    # ---------------------------------------------------------
+    # Parallel Processing Block (Forking)
+    # ---------------------------------------------------------
+    
+    max_workers = max(1, mp.cpu_count() - 1)
+    print(f"Forking {max_workers} processes. Mesh memory will be shared via COW.")
 
-        img_file = os.path.join(config['output_folder'], f"{pose.label}_heatmap.jpg")
-        cv2.imwrite(img_file, heatmap)
+    # Explicitly use the fork context for the ProcessPoolExecutor
+    fork_context = mp.get_context('fork')
+    with ProcessPoolExecutor(max_workers=max_workers, mp_context=fork_context) as executor:
+        futures = {
+            executor.submit(
+                process_view_forked,
+                view_data,
+                config['output_folder'],
+                scale,
+                config['distortion']['enabled']
+            ): view_data for view_data in views_to_process
+        }
+
+        for future in tqdm(as_completed(futures), total=len(futures), desc="Raytracing"):
+            try:
+                processed_label = future.result() 
+            except Exception as exc:
+                print(f"\nView generated an exception: {exc}")
