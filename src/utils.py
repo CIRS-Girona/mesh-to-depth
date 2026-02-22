@@ -1,5 +1,5 @@
 import numpy as np
-import trimesh, io, gc, cv2
+import trimesh, io, cv2
 from PIL import Image
 
 from trimesh.ray.ray_pyembree import RayMeshIntersector
@@ -11,8 +11,8 @@ def setup_camera_scene(mesh, sensor: Sensor, pose: Pose):
     # Construct camera with parameters specified
     camera = trimesh.scene.Camera(
         resolution=(
-            sensor.height + sensor.padding,
-            sensor.width + sensor.padding
+            sensor.height,
+            sensor.width
         ),
         focal=(
             sensor.fx,
@@ -42,8 +42,6 @@ def raytrace(
         pose: Pose,
         scale: float = 1.0,
         distort: bool = False,
-        correct_perspective: bool = False,
-        capture_mesh: bool = False
 ):
     # Create scene with proper camera transform
     camera, scene = setup_camera_scene(
@@ -54,6 +52,22 @@ def raytrace(
 
     # Generate rays and calculate intersections
     ray_origins, ray_vectors, ray_pixels = scene.camera_rays()
+
+    # Distort ray vectors so that depth map is pixel accurate with original image
+    if distort and sensor.x is not None and sensor.y is not None:
+        # Trimesh convention is (y, x) for pixel coordinates, so swap the order when indexing
+        x_cam = sensor.y[ray_pixels[:, 0], ray_pixels[:, 1]]
+        y_cam = sensor.x[ray_pixels[:, 0], ray_pixels[:, 1]]
+        z_cam = np.full_like(x_cam, -1.0)
+
+        # Normalize the vectors to length 1
+        ray_vectors = np.stack((x_cam, y_cam, z_cam), axis=-1)
+        ray_vectors /= np.linalg.norm(ray_vectors, axis=1, keepdims=True)
+
+        # Rotate the local vectors into world space
+        R = pose.T[:3, :3]
+        ray_vectors = (R @ ray_vectors.T).T
+
     valid_rays = ray_caster.intersects_any(ray_origins, ray_vectors)
 
     # Find intersections for valid rays
@@ -70,35 +84,14 @@ def raytrace(
         depth_coords = ray_pixels[valid_rays][pixels]
         depth[depth_coords[:, 0], depth_coords[:, 1]] = positions[:, 2]
 
-    depth = np.astype(1000 * scale * np.abs(depth), np.uint16)  # Scale to correct units and then convert to millimeters
-    if distort:
-        depth = cv2.remap(depth, sensor.map_x, sensor.map_y, interpolation=cv2.INTER_LINEAR)
-
-    if correct_perspective and sensor.H is not None:  # Correct perspective if enabled and possible
-        depth = cv2.warpPerspective(depth, sensor.H, camera.resolution[::-1])
-        depth = sensor.correct_perspective(depth)
+    depth = (1000 * scale * np.abs(depth)).astype(np.uint16)  # Scale to correct units and then convert to millimeters
 
     # Apply an exponential scale to the heatmap to amplify variations
-    heatmap = np.power(10, np.astype(depth, np.float32) / (np.max(depth) + 1)) - 1
+    heatmap = np.power(10, depth.astype(np.float32) / (np.max(depth) + 1)) - 1
     if np.any(heatmap != 0):
         heatmap[heatmap == 0] = np.min(heatmap[heatmap != 0]) - 1
         heatmap -= np.min(heatmap)
         heatmap /= np.maximum(np.max(heatmap), 1)
 
-    heatmap = cv2.applyColorMap(np.astype(255 * heatmap, np.uint8), cv2.COLORMAP_INFERNO)
-
-    img_mesh = None
-    if capture_mesh:
-        img_mesh = capture_scene(camera, scene)
-        if distort:
-            img_mesh = cv2.remap(img_mesh, sensor.map_x, sensor.map_y, interpolation=cv2.INTER_LINEAR)
-
-        if correct_perspective and sensor.H is not None:
-            img_mesh = cv2.warpPerspective(img_mesh, sensor.H, camera.resolution[::-1])
-            img_mesh = sensor.correct_perspective(img_mesh)
-
-    # Memory cleanup
-    del camera, scene, ray_origins, ray_vectors, ray_pixels, valid_rays, hits
-    gc.collect()
-
-    return depth, heatmap, img_mesh
+    heatmap = cv2.applyColorMap((255 * heatmap).astype(np.uint8), cv2.COLORMAP_INFERNO)
+    return depth, heatmap

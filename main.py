@@ -1,5 +1,5 @@
 import numpy as np
-import trimesh, yaml, os, gc, cv2, random
+import trimesh, yaml, os, cv2
 from PIL import Image
 from tqdm import tqdm
 from typing import List, Tuple
@@ -92,90 +92,31 @@ if __name__ == "__main__":
         img_file = os.path.join(config['output_folder'], "heatmap.jpg")
         cv2.imwrite(img_file, heatmap)
 
-        img_file = os.path.join(config['output_folder'], "scene.jpg")
-        cv2.imwrite(img_file, img_mesh)
-
-        exit()
+        exit(0)
 
     if config['distortion']['enabled']:
         print("Computing distortion mappings...")
 
         for sensor in sensors:
-            sensor.padding = config['perspective_correction']['padding'] if config['perspective_correction']['enabled'] else 0
-
             sensor.compute_distortion_maps(
                 max_iter=config['distortion']['max_iterations'],
                 tol=config['distortion']['tolerance'],
                 eta=config['distortion']['damping']
             )
 
-    if config['perspective_correction']['enabled']:
-        print("Computing homography matrix...")
-
-        clahe = cv2.createCLAHE(
-            clipLimit=config['perspective_correction']['clahe_limit'],
-            tileGridSize=(config['perspective_correction']['clahe_grid'], config['perspective_correction']['clahe_grid'])
-        )
-
-        for sensor in sensors:
-            pose = random.choice(sensor.poses)  # Pick a random pose for feature matching
-
-            img_file = None
-            for ext in config['extensions']:
-                img_path = os.path.join(config['images_path'], f"{pose.label}.{ext}")
-                if os.path.exists(img_path):
-                    img_file = img_path
-                    break
-
-            if img_file is None:
-                raise FileNotFoundError(f"Couldn't find {pose.label} for any of the given extensions: {config['extensions']}")
-
-            print(f"For camera {sensor.id}, {pose.label} will be used for feature matching.")
-
-            img_orig = cv2.cvtColor(cv2.imread(img_file), cv2.COLOR_BGR2HSV)
-            img_orig[:, :, 2] = clahe.apply(img_orig[:, :, 2])
-            img_orig = cv2.cvtColor(img_orig, cv2.COLOR_HSV2BGR)
-
-            _, _, img_mesh = raytrace(
-                ray_caster,
-                sensor,
-                pose,
-                distort=config['distortion']['enabled'],
-                capture_mesh=True
-            )
-
-            img_mesh = cv2.cvtColor(img_mesh, cv2.COLOR_BGR2HSV)
-            img_mesh[:, :, 2] = clahe.apply(img_mesh[:, :, 2])
-            img_mesh = cv2.cvtColor(img_mesh, cv2.COLOR_HSV2BGR)
-
-            matched_img = sensor.compute_homography(
-                img_mesh,
-                img_orig,
-                model=config['perspective_correction']['model'],
-                min_match_count=config['perspective_correction']['minimum_match_count'],
-                distance_ratio=config['perspective_correction']['distance_ratio'],
-                ransac_threshold=config['perspective_correction']['ransac_threshold'],
-                max_iterations=config['perspective_correction']['max_iterations'],
-            )
-
-            img_file = os.path.join(config['output_folder'], f"matches_{sensor.id}.jpg")
-            cv2.imwrite(img_file, matched_img)
-
     print("Will begin raytracing.")
 
-    completed = os.listdir(config['output_folder'])
+    completed = set(os.listdir(config['output_folder']))
     for i, (sensor, pose) in enumerate(tqdm(views)):
         if f"{pose.label}.png" in completed:  # Skip already processed poses
             continue
 
-        depth, heatmap, img_mesh = raytrace(
+        depth, heatmap = raytrace(
             ray_caster,
             sensor,
             pose,
             scale=scale,
             distort=config['distortion']['enabled'],
-            correct_perspective=config['perspective_correction']['enabled'],
-            capture_mesh=config['save_scene']
         )
 
         img_file = os.path.join(config['output_folder'], f"{pose.label}.png")
@@ -183,12 +124,3 @@ if __name__ == "__main__":
 
         img_file = os.path.join(config['output_folder'], f"{pose.label}_heatmap.jpg")
         cv2.imwrite(img_file, heatmap)
-
-        # Save scene image
-        if img_mesh is not None:
-            img_file = os.path.join(config['output_folder'], f"{pose.label}_scene.jpg")
-            cv2.imwrite(img_file, img_mesh)
-
-        # Clean up
-        del img_mesh, depth
-        gc.collect()
