@@ -1,57 +1,17 @@
 import numpy as np
-import trimesh, yaml, os, cv2, gc
-import multiprocessing as mp
-from PIL import Image
+import yaml, os, cv2
+import open3d as o3d
 from tqdm import tqdm
 from typing import List, Tuple
-from concurrent.futures import ProcessPoolExecutor, as_completed
 
-from trimesh.transformations import quaternion_matrix
-from trimesh.ray.ray_pyembree import RayMeshIntersector
+from scipy.spatial.transform import Rotation as R
 
 from src.utils import raytrace
 from src.parsers import Agisoft, Meshroom
 from src.cameras import Sensor, Pose
 
-# Disable upper limit for image pixels in Pillow library
-Image.MAX_IMAGE_PIXELS = None
-
-# Prevent OpenCV from deadlocking when combined with os.fork()
-cv2.setNumThreads(0)
-
-# This will be initialized in the main process and inherited by the workers
-RAY_CASTER = None
-
-
-def process_view_forked(view_data: Tuple[Sensor, Pose], output_folder: str, scale: float, distort: bool):
-    """
-    Worker function. Thanks to 'fork', it can freely read global_ray_caster 
-    without duplicating the memory or pickling C-pointers.
-    """
-    sensor, pose = view_data
-    
-    # Access the shared C-level raycaster
-    depth, heatmap = raytrace(
-        RAY_CASTER,
-        sensor,
-        pose,
-        scale=scale,
-        distort=distort,
-    )
-
-    img_file_depth = os.path.join(output_folder, f"{pose.label}.png")
-    cv2.imwrite(img_file_depth, depth, (cv2.IMWRITE_PNG_COMPRESSION, 9))
-
-    img_file_heatmap = os.path.join(output_folder, f"{pose.label}_heatmap.jpg")
-    cv2.imwrite(img_file_heatmap, heatmap)
-
-    return pose.label
-
 
 if __name__ == "__main__":
-    # Force the fork method immediately
-    mp.set_start_method('fork', force=True)
-
     with open('config.yaml', 'r') as file:
         config = yaml.safe_load(file)
 
@@ -73,8 +33,9 @@ if __name__ == "__main__":
 
     # Load the mesh and build the BVH tree ONCE
     print("Loading mesh and building BVH tree in main memory...")
-    main_mesh = trimesh.load_mesh(config['mesh_path'])
-    RAY_CASTER = RayMeshIntersector(main_mesh)
+    main_mesh = o3d.t.io.read_triangle_mesh(config['mesh_path'])
+    RAY_CASTER = o3d.t.geometry.RaycastingScene()
+    RAY_CASTER.add_triangles(main_mesh)
 
     scale = 1.0
     if config['scale_mesh']['enabled']:
@@ -103,13 +64,15 @@ if __name__ == "__main__":
         sensor.height = config['manual_view']['height']
         sensor.fx = config['manual_view']['fx']
         sensor.fy = config['manual_view']['fy']
-     
+
         center = np.array((0, 0, 0))
         if config['manual_view']['use_center']:
-            center = (main_mesh.bounds[1, :] - main_mesh.bounds[0, :]) / 2 + main_mesh.bounds[0, :]
+            min_bound = main_mesh.vertex.positions.min(0).numpy()
+            max_bound = main_mesh.vertex.positions.max(0).numpy()
+            center = (max_bound - min_bound) / 2.0 + min_bound
 
         pose = Pose()
-        pose.T = quaternion_matrix(config['manual_view']['orientation'])
+        pose.T = R.from_quat(config['manual_view']['orientation']).as_matrix()
         pose.T[:3, 3] = center + config['manual_view']['position']
 
         depth, heatmap = raytrace(
@@ -147,27 +110,25 @@ if __name__ == "__main__":
         print("All views have already been processed.")
         exit(0)
 
-    # Free the main process's reference to the mesh and BVH tree, allowing them to be shared via COW
-    gc.freeze()
+    print(f"Processing {len(views_to_process)} views...")
 
-    max_workers = max(1, mp.cpu_count() - 1)
-    print(f"Forking {max_workers} processes. Mesh memory will be shared via COW.")
+    for view_data in tqdm(views_to_process, desc="Raytracing"):
+        sensor, pose = view_data
+        
+        try:
+            depth, heatmap = raytrace(
+                RAY_CASTER,
+                sensor,
+                pose,
+                scale=scale,
+                distort=config['distortion']['enabled']
+            )
 
-    # Explicitly use the fork context for the ProcessPoolExecutor
-    fork_context = mp.get_context('fork')
-    with ProcessPoolExecutor(max_workers=max_workers, mp_context=fork_context) as executor:
-        futures = {
-            executor.submit(
-                process_view_forked,
-                view_data,
-                config['output_folder'],
-                scale,
-                config['distortion']['enabled']
-            ): view_data for view_data in views_to_process
-        }
+            img_file_depth = os.path.join(config['output_folder'], f"{pose.label}.png")
+            cv2.imwrite(img_file_depth, depth)
 
-        for future in tqdm(as_completed(futures), total=len(futures), desc="Raytracing"):
-            try:
-                processed_label = future.result() 
-            except Exception as exc:
-                print(f"\nView generated an exception: {exc}")
+            img_file_heatmap = os.path.join(config['output_folder'], f"{pose.label}_heatmap.jpg")
+            cv2.imwrite(img_file_heatmap, heatmap)
+
+        except Exception as exc:
+            print(f"\nView '{pose.label}' generated an exception: {exc}")

@@ -3,8 +3,6 @@ from typing import List
 
 from .pose import Pose
 
-MAX_FEATURE_COUNT = 100_000
-
 
 class Sensor:
     def __init__(self) -> None:

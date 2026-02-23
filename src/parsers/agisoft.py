@@ -1,13 +1,11 @@
 import numpy as np
 import xml.etree.ElementTree as ET
-import trimesh.transformations
 from typing import Dict, List
 
-from .parser import Parser
+from .parser import Parser, rotation_matrix_3d
 from ..cameras import Sensor, Pose
 
-TRIMESH_T_AGISOFT = trimesh.transformations.rotation_matrix(np.pi, [0, 1, 0]) @\
-    trimesh.transformations.rotation_matrix(np.pi/2, [0, 0, 1])
+MESH_T_AGISOFT = rotation_matrix_3d(np.pi, (0, 1, 0)) @ rotation_matrix_3d(np.pi/2, (0, 0, 1))
 
 
 class Agisoft(Parser):
@@ -79,7 +77,7 @@ class Agisoft(Parser):
             c_T_trimesh = np.array([float(x) for x in transform_elem.text.split()]).reshape(4,4)
 
             pose = Pose()
-            pose.T = m_T_c @ c_T_trimesh @ TRIMESH_T_AGISOFT
+            pose.T = m_T_c @ c_T_trimesh @ MESH_T_AGISOFT
             pose.label = cam.attrib['label']
 
             sensors[cam.attrib['sensor_id']].poses.append(pose)
