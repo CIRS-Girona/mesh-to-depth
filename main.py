@@ -1,5 +1,5 @@
 import numpy as np
-import trimesh, yaml, os, cv2
+import trimesh, yaml, os, cv2, gc
 import multiprocessing as mp
 from PIL import Image
 from tqdm import tqdm
@@ -19,12 +19,9 @@ Image.MAX_IMAGE_PIXELS = None
 # Prevent OpenCV from deadlocking when combined with os.fork()
 cv2.setNumThreads(0)
 
-# ---------------------------------------------------------
-# Global Memory (Shared across forks via Copy-On-Write)
-# ---------------------------------------------------------
-
 # This will be initialized in the main process and inherited by the workers
-global_ray_caster = None
+RAY_CASTER = None
+
 
 def process_view_forked(view_data: Tuple[Sensor, Pose], output_folder: str, scale: float, distort: bool):
     """
@@ -35,7 +32,7 @@ def process_view_forked(view_data: Tuple[Sensor, Pose], output_folder: str, scal
     
     # Access the shared C-level raycaster
     depth, heatmap = raytrace(
-        global_ray_caster,
+        RAY_CASTER,
         sensor,
         pose,
         scale=scale,
@@ -50,12 +47,9 @@ def process_view_forked(view_data: Tuple[Sensor, Pose], output_folder: str, scal
 
     return pose.label
 
-# ---------------------------------------------------------
-# Main Script
-# ---------------------------------------------------------
 
 if __name__ == "__main__":
-    # 1. Force the fork method immediately
+    # Force the fork method immediately
     mp.set_start_method('fork', force=True)
 
     with open('config.yaml', 'r') as file:
@@ -77,10 +71,10 @@ if __name__ == "__main__":
 
     print("Parsed camera info successfully")
 
-    # 2. Load the mesh and build the BVH tree ONCE
+    # Load the mesh and build the BVH tree ONCE
     print("Loading mesh and building BVH tree in main memory...")
     main_mesh = trimesh.load_mesh(config['mesh_path'])
-    global_ray_caster = RayMeshIntersector(main_mesh)
+    RAY_CASTER = RayMeshIntersector(main_mesh)
 
     scale = 1.0
     if config['scale_mesh']['enabled']:
@@ -119,7 +113,7 @@ if __name__ == "__main__":
         pose.T[:3, 3] = center + config['manual_view']['position']
 
         depth, heatmap = raytrace(
-            global_ray_caster,
+            RAY_CASTER,
             sensor,
             pose,
             scale=scale,
@@ -153,10 +147,9 @@ if __name__ == "__main__":
         print("All views have already been processed.")
         exit(0)
 
-    # ---------------------------------------------------------
-    # Parallel Processing Block (Forking)
-    # ---------------------------------------------------------
-    
+    # Free the main process's reference to the mesh and BVH tree, allowing them to be shared via COW
+    gc.freeze()
+
     max_workers = max(1, mp.cpu_count() - 1)
     print(f"Forking {max_workers} processes. Mesh memory will be shared via COW.")
 
