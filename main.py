@@ -32,7 +32,7 @@ if __name__ == "__main__":
     print("Parsed camera info successfully")
 
     # Load the mesh and build the BVH tree ONCE
-    print("Loading mesh and building BVH tree in main memory...")
+    print("Loading mesh...")
     main_mesh = o3d.t.io.read_triangle_mesh(config['mesh_path'])
     RAY_CASTER = o3d.t.geometry.RaycastingScene()
     RAY_CASTER.add_triangles(main_mesh)
@@ -111,7 +111,6 @@ if __name__ == "__main__":
         exit(0)
 
     print(f"Processing {len(views_to_process)} views...")
-
     for view_data in tqdm(views_to_process, desc="Raytracing"):
         sensor, pose = view_data
         
