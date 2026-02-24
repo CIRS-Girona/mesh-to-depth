@@ -11,8 +11,8 @@ distortion:
   enabled: true                            # Apply distortion to the depth maps so they match the original images captured
   max_iterations: 100                      # Maximum number of iterations before terminating
   tolerance: 0.001                         # Relative tolerance for convergence
-  damping: 1.0                             # Damping factor when calculating distortion mappings. Helps prevent
-                                           # overflows but will increase computational time
+  damping: 1.0                             # Damping factor when calculating distortion mappings. Helps with stability.
+                                           # Smalller values will be more accurate but will require more iterations to converge.
 
 scale_mesh:
   enabled: false                           # Rescale the mesh given known poses

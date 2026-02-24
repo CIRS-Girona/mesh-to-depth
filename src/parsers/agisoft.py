@@ -66,7 +66,7 @@ class Agisoft(Parser):
             sensors[s.id] = s
 
         # Parse camera views
-        cameras = []
+        cameras = chunk.find('cameras').findall('camera')
         [cameras.extend(g.findall('camera')) for g in chunk.find('cameras').findall('group')]
 
         for cam in cameras:

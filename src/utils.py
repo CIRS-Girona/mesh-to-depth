@@ -10,19 +10,9 @@ def raytrace(
         sensor: Sensor,
         pose: Pose,
         scale: float = 1.0,
-        distort: bool = False,
 ):
-    # Create a meshgrid for pixel coordinates
-    u, v = np.meshgrid(np.arange(sensor.width), np.arange(sensor.height))
-
-    # 2. Calculate local ray directions based on camera intrinsics
-    if distort and sensor.x is not None and sensor.y is not None:
-        x_cam = sensor.y
-        y_cam = sensor.x
-    else:
-        x_cam = (u - sensor.cx) / sensor.fx
-        y_cam = (v - sensor.cy) / sensor.fy
-
+    x_cam = sensor.y
+    y_cam = sensor.x
     z_cam = np.full_like(x_cam, -1.0)
 
     # Stack into an (H, W, 3) array

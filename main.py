@@ -119,8 +119,7 @@ if __name__ == "__main__":
                 RAY_CASTER,
                 sensor,
                 pose,
-                scale=scale,
-                distort=config['distortion']['enabled']
+                scale=scale
             )
 
             img_file_depth = os.path.join(config['output_folder'], f"{pose.label}.png")
