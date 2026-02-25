@@ -31,6 +31,19 @@ if __name__ == "__main__":
 
     print("Parsed camera info successfully")
 
+    views_to_process = []
+    if not config['manual_view']['enabled']:
+        print("Filtering completed views...")
+        completed = set(os.listdir(config['output_folder']))
+        views_to_process = [
+            (s, p) for (s, p) in views
+            if f"{p.label}.png" not in completed
+        ]
+
+        if not views_to_process:
+            print("All views have already been processed.")
+            exit(0)
+
     # Load the mesh and build the BVH tree ONCE
     print("Loading mesh...")
     main_mesh = o3d.t.io.read_triangle_mesh(config['mesh_path'])
@@ -98,17 +111,6 @@ if __name__ == "__main__":
                 tol=config['distortion']['tolerance'],
                 eta=config['distortion']['damping']
             )
-
-    print("Filtering completed views...")
-    completed = set(os.listdir(config['output_folder']))
-    views_to_process = [
-        (s, p) for (s, p) in views 
-        if f"{p.label}.png" not in completed
-    ]
-
-    if not views_to_process:
-        print("All views have already been processed.")
-        exit(0)
 
     print(f"Processing {len(views_to_process)} views...")
     for view_data in tqdm(views_to_process, desc="Raytracing"):
