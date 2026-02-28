@@ -36,14 +36,14 @@ class Agisoft(Parser):
         # Parse calibration parameters
         sensors: Dict[str, Sensor] = {}
         for sensor in chunk.find('sensors').findall('sensor'):
-            s = Sensor()
-
             calibration = sensor.find('calibration')
             if calibration is None:
                 continue
 
-            s.width = int(calibration.find('resolution').attrib['width'])
-            s.height = int(calibration.find('resolution').attrib['height'])
+            width = int(calibration.find('resolution').attrib['width'])
+            height = int(calibration.find('resolution').attrib['height'])
+
+            s = Sensor(width, height)
 
             s.fx = float(calibration.find('f').text)
             s.fy = s.fx

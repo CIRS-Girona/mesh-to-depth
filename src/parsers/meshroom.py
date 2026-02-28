@@ -32,10 +32,10 @@ class Meshroom(Parser):
         # Parse calibration parameters
         sensors: Dict[str, Sensor] = {}
         for sensor in data['intrinsics']:
-            s = Sensor()
+            width = int(sensor['width'])
+            height = int(sensor['height'])
 
-            s.width = int(sensor['width'])
-            s.height = int(sensor['height'])
+            s = Sensor(width, height)
 
             focal_length = float(sensor['focalLength'])  # mm
 

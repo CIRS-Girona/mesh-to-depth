@@ -40,7 +40,7 @@ def raytrace(
     depth = (1000 * scale * depth).astype(np.uint16)
 
     # Apply an exponential scale to the heatmap to amplify variations
-    heatmap = depth.astype(np.float32)
+    heatmap = np.power(10, depth.astype(np.float32) / (np.max(depth) + 1)) - 1
     if np.any(heatmap != 0):
         heatmap[heatmap == 0] = np.min(heatmap[heatmap != 0]) - 1
         heatmap -= np.min(heatmap)

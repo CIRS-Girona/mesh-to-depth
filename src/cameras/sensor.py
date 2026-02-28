@@ -5,22 +5,22 @@ from .pose import Pose
 
 
 class Sensor:
-    def __init__(self) -> None:
+    def __init__(self, width: int, height: int) -> None:
         self.id: str = None
         self.poses: List[Pose] = []
 
+        self.width: int = width    # Resolution width
+        self.height: int = height  # Resolution height
+
         # Intrinsic Parameters
-        self.fx: float = None    # Focal length X-axis
-        self.fy: float = None    # Focal length Y-axis
+        self.fx: float = None      # Focal length X-axis
+        self.fy: float = None      # Focal length Y-axis
 
-        self.cx: float = None    # Principal point X-axis
-        self.cy: float = None    # Principal point Y-axis
+        self.cx: float = None      # Principal point X-axis
+        self.cy: float = None      # Principal point Y-axis
 
-        self.fovx: float = None  # Field of View X-axis (radians)
-        self.fovy: float = None  # Field of View Y-axis (radians)
-
-        self.width: int = None   # Resolution width
-        self.height: int = None  # Resolution height
+        self.fovx: float = None    # Field of View X-axis (radians)
+        self.fovy: float = None    # Field of View Y-axis (radians)
 
         # Distortion Parameters (Brown-Conrady)
         self.k1: float = None  # 1st Radial coefficient
