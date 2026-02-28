@@ -43,26 +43,23 @@ class Agisoft(Parser):
             width = int(calibration.find('resolution').attrib['width'])
             height = int(calibration.find('resolution').attrib['height'])
 
-            s = Sensor(width, height)
+            fx = float(calibration.find('f').text)
+            fy = fx
 
-            s.fx = float(calibration.find('f').text)
-            s.fy = s.fx
+            fovx = 2 * np.arctan(width / (2 * fx))
+            fovy = 2 * np.arctan(height / (2 * fy))
 
-            s.fovx = 2 * np.arctan(s.width / (2 * s.fx))
-            s.fovy = 2 * np.arctan(s.height / (2 * s.fy))
+            cx = width / 2.0 + float(calibration.find('cx').text)
+            cy = height / 2.0 + float(calibration.find('cy').text)
 
-            s.cx = s.width / 2.0 + float(calibration.find('cx').text)
-            s.cy = s.height / 2.0 + float(calibration.find('cy').text)
+            p1 = float(calibration.find('p1').text)
+            p2 = float(calibration.find('p2').text)
 
-            s.p1 = float(calibration.find('p1').text)
-            s.p2 = float(calibration.find('p2').text)
+            k1 = float(calibration.find('k1').text)
+            k2 = float(calibration.find('k2').text)
+            k3 = float(calibration.find('k3').text)
 
-            s.k1 = float(calibration.find('k1').text)
-            s.k2 = float(calibration.find('k2').text)
-            s.k3 = float(calibration.find('k3').text)
-
-            s.id = sensor.attrib['id']
-
+            s = Sensor(sensor.attrib['id'], width, height, fx, fy, cx, cy, fovx, fovy, k1=k1, k2=k2, k3=k3, p1=p1, p2=p2)
             sensors[s.id] = s
 
         # Parse camera views

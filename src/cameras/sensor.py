@@ -5,30 +5,45 @@ from .pose import Pose
 
 
 class Sensor:
-    def __init__(self, width: int, height: int) -> None:
-        self.id: str = None
+    def __init__(self,
+        id: str,
+        width: int,
+        height: int,
+        fx: float,
+        fy: float,
+        cx: float,
+        cy: float,
+        fovx: float,
+        fovy: float,
+        k1: float = 0.0,
+        k2: float = 0.0,
+        k3: float = 0.0,
+        p1: float = 0.0,
+        p2: float = 0.0
+    ) -> None:
+        self.id: str = id
         self.poses: List[Pose] = []
 
         self.width: int = width    # Resolution width
         self.height: int = height  # Resolution height
 
         # Intrinsic Parameters
-        self.fx: float = None      # Focal length X-axis
-        self.fy: float = None      # Focal length Y-axis
+        self.fx: float = fx      # Focal length X-axis
+        self.fy: float = fy      # Focal length Y-axis
 
-        self.cx: float = None      # Principal point X-axis
-        self.cy: float = None      # Principal point Y-axis
+        self.cx: float = cx      # Principal point X-axis
+        self.cy: float = cy      # Principal point Y-axis
 
-        self.fovx: float = None    # Field of View X-axis (radians)
-        self.fovy: float = None    # Field of View Y-axis (radians)
+        self.fovx: float = fovx    # Field of View X-axis (radians)
+        self.fovy: float = fovy    # Field of View Y-axis (radians)
 
         # Distortion Parameters (Brown-Conrady)
-        self.k1: float = None  # 1st Radial coefficient
-        self.k2: float = None  # 2nd Radial coefficient
-        self.k3: float = None  # 3rd Radial coefficient
+        self.k1: float = k1  # 1st Radial coefficient
+        self.k2: float = k2  # 2nd Radial coefficient
+        self.k3: float = k3  # 3rd Radial coefficient
 
-        self.p1: float = None  # 1st Tangential coefficient
-        self.p2: float = None  # 2nd Tangential coefficient
+        self.p1: float = p1  # 1st Tangential coefficient
+        self.p2: float = p2  # 2nd Tangential coefficient
 
         # Coordinate grids for ray tracing (undistorted)
         self.u, self.v = np.meshgrid(

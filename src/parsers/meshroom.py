@@ -35,34 +35,31 @@ class Meshroom(Parser):
             width = int(sensor['width'])
             height = int(sensor['height'])
 
-            s = Sensor(width, height)
-
             focal_length = float(sensor['focalLength'])  # mm
 
             px = float(sensor['sensorWidth']) / s.width  # mm / pixels
             py = float(sensor['sensorHeight']) / s.height # mm / pixels
 
-            s.fx = focal_length / px  # Focal length in pixels
-            s.fy = focal_length / py  # Focal length in pixels
+            fx = focal_length / px  # Focal length in pixels
+            fy = focal_length / py  # Focal length in pixels
 
-            s.fovx = 2 * np.arctan(s.width / (2 * s.fx))
-            s.fovy = 2 * np.arctan(s.height / (2 * s.fy))
+            fovx = 2 * np.arctan(width / (2 * fx))
+            fovy = 2 * np.arctan(height / (2 * fy))
 
-            s.cx = s.width / 2.0 + float(sensor['principalPoint'][0])
-            s.cy = s.height / 2.0 + float(sensor['principalPoint'][1])
+            cx = width / 2.0 + float(sensor['principalPoint'][0])
+            cy = height / 2.0 + float(sensor['principalPoint'][1])
 
             if len(sensor['distortionParams']) < 5:
                 raise ValueError("Distortion provided doesn't follow Brown-Conrady model.")
 
-            s.k1 = float(sensor['distortionParams'][0])
-            s.k2 = float(sensor['distortionParams'][1])
-            s.k3 = float(sensor['distortionParams'][2])
+            k1 = float(sensor['distortionParams'][0])
+            k2 = float(sensor['distortionParams'][1])
+            k3 = float(sensor['distortionParams'][2])
 
-            s.p1 = float(sensor['distortionParams'][3])
-            s.p2 = float(sensor['distortionParams'][4])
+            p1 = float(sensor['distortionParams'][3])
+            p2 = float(sensor['distortionParams'][4])
 
-            s.id = sensor['intrinsicId']
-
+            s = Sensor(sensor['intrinsicId'], width, height, fx, fy, cx, cy, fovx, fovy, k1=k1, k2=k2, k3=k3, p1=p1, p2=p2)
             sensors[s.id] = s
 
         # Parse camera views
